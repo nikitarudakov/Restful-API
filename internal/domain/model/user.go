@@ -1,8 +1,7 @@
 package model
 
 type User struct {
-	Username       string `json:"username" form:"username" bson:"username"`
-	HashedPassword string `json:"password" form:"password" bson:"password"`
+	HashID string `json:"hash_id" bson:"hash_id"`
 }
 
-func (User) TableName() string { return "users" }
+func (u *User) TableName() string { return "users" }

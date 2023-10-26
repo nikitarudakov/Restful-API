@@ -1,26 +1,37 @@
 package repository
 
 import (
-	"git.foxminded.ua/foxstudent106092/user-management/internal/adapter/gateway"
+	"context"
+	"fmt"
+	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/repository"
-	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type userRepository struct {
-	db gateway.Database
+	db *mongo.Client
 }
 
-func NewUserRepository(db gateway.Database) repository.UserRepository {
-	return &userRepository{db}
+func NewUserRepository(db *mongo.Client) repository.UserRepository {
+	return &userRepository{db: db}
 }
 
-func (ur *userRepository) Create(u *model.User) (*model.User, error) {
-	_, err := ur.db.InsertUpdateItem(u)
+func (ur *userRepository) Create(u *model.User) (interface{}, error) {
+	coll := ur.db.Database(config.C.Database.Name).Collection(u.TableName())
+
+	filter := bson.M{"hash_id": u.HashID}
+	update := bson.M{"$set": u}
+
+	var upsert = true
+	opts := options.UpdateOptions{Upsert: &upsert}
+
+	result, err := coll.UpdateOne(context.TODO(), filter, update, &opts)
 	if err != nil {
-		log.Error().Err(err).Send()
-		return nil, err
+		return nil, fmt.Errorf("error updating/inserting user data: %w", err)
 	}
 
-	return u, err
+	return result.UpsertedID, nil
 }
