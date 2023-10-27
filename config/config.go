@@ -12,9 +12,15 @@ type DatabaseConfig struct {
 	URL  string `json:"url"`
 }
 
+type AdminCred struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // Config Create private data struct to hold config options.
 type config struct {
 	Database DatabaseConfig `mapstructure:"db"`
+	AdminAPI AdminCred      `mapstructure:"admin_api"`
 }
 
 var C config

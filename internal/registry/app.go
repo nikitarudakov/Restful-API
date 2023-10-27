@@ -19,6 +19,7 @@ func NewRegistry(db *mongo.Client) Registry {
 
 func (r *registry) NewAppController() controller.AppController {
 	return controller.AppController{
-		User: r.NewUserController(),
+		User:  r.NewUserController(),
+		Admin: r.NewAdminController(),
 	}
 }
