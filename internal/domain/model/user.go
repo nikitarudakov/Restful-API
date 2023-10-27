@@ -1,7 +1,8 @@
 package model
 
 type User struct {
-	HashID string `json:"hash_id" bson:"hash_id"`
+	Username string `json:"username" bson:"username" validate:"required,min=4,sha256"`
+	Password string `json:"password" bson:"password" validate:"required,min=8,containsany=!@#?*"`
 }
 
 func (u *User) TableName() string { return "users" }

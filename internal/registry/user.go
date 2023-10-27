@@ -9,6 +9,7 @@ import (
 func (r *registry) NewUserController() controller.User {
 	uu := usecase.NewUserUsecase(
 		repository.NewUserRepository(r.db),
+		repository.NewProfileRepository(r.db),
 	)
 
 	return controller.NewUserController(uu)
