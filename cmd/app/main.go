@@ -25,11 +25,11 @@ func main() {
 
 	r := registry.NewRegistry(db)
 
-	mainRouter := router.SetUserRouter(r)
-	router.SetAdminGroupRouter(r, mainRouter)
+	userRouter := router.SetUserRouter(r)
+	router.SetAdminGroupRouter(r, userRouter)
 
 	fmt.Println("Server listen at http://localhost" + ":8080")
-	if err = mainRouter.Start(":8080"); err != nil {
+	if err = userRouter.Start(":8080"); err != nil {
 		log.Fatalln(err)
 	}
 }

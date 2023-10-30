@@ -2,75 +2,82 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type userRepository struct {
 	db *mongo.Client
 }
 
+// NewUserRepository implicitly links repository.UserRepository to userRepository
+// which uses mongo.Client as a database
 func NewUserRepository(db *mongo.Client) repository.UserRepository {
 	return &userRepository{db: db}
 }
 
-func (ur *userRepository) Create(u *model.User) (interface{}, error) {
-	result, err := ur.UpdateMethod(u)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, err
-}
-
 func (ur *userRepository) Find(u *model.User) (*model.User, error) {
-	if err := ur.FindMethod(u).Decode(u); err != nil {
+	coll := getCollection(ur.db, u.TableName())
+
+	filter := bson.M{"username": u.Username}
+
+	result := coll.FindOne(context.TODO(), filter)
+
+	if err := result.Decode(u); err != nil {
 		return nil, err
 	}
 
 	return u, nil
 }
 
-func (ur *userRepository) FindMethod(u *model.User) *mongo.SingleResult {
-	coll := ur.getCollection(u.TableName())
+func (ur *userRepository) Create(u *model.User) (interface{}, error) {
+	coll := getCollection(ur.db, u.TableName())
 
-	filter, _, _ := ur.getQueryParams(u)
+	_, err := ur.Find(u)
+	if err == nil {
+		return nil, errors.New("user with such username already exists")
+	}
 
-	result := coll.FindOne(context.TODO(), filter)
-
-	return result
-}
-
-func (ur *userRepository) UpdateMethod(u *model.User) (interface{}, error) {
-	coll := ur.getCollection(u.TableName())
-
-	filter, update, opts := ur.getQueryParams(u)
-
-	result, err := coll.UpdateOne(context.TODO(), filter, update, opts)
+	result, err := coll.InsertOne(context.TODO(), u)
 	if err != nil {
 		return nil, fmt.Errorf("error updating/inserting user data: %w", err)
 	}
 
-	return result.UpsertedID, nil
+	return result.InsertedID, nil
 }
 
-func (ur *userRepository) getCollection(colName string) *mongo.Collection {
-	return ur.db.Database(config.C.Database.Name).Collection(colName)
+func (ur *userRepository) UpdateUsername(newUser *model.User, oldVal string) error {
+	coll := getCollection(ur.db, newUser.TableName())
+
+	filter := bson.M{"username": oldVal}
+	update := bson.M{"$set": bson.M{
+		"username": newUser.Username,
+	}}
+
+	_, err := coll.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return fmt.Errorf("error updating/inserting user data: %w", err)
+	}
+
+	return nil
 }
 
-func (ur *userRepository) getQueryParams(u *model.User) (interface{}, interface{}, *options.UpdateOptions) {
-	var filter interface{}
-	var update interface{}
+func (ur *userRepository) UpdatePassword(u *model.User) error {
+	coll := getCollection(ur.db, u.TableName())
 
-	filter = bson.M{"username": u.Username}
-	update = bson.M{"$set": u}
+	filter := bson.M{"username": u.Username}
+	update := bson.M{"$set": bson.M{
+		"password": u.Password,
+	}}
 
-	opts := options.Update().SetUpsert(true)
+	_, err := coll.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return fmt.Errorf("error updating/inserting user data: %w", err)
+	}
 
-	return filter, update, opts
+	return nil
 }

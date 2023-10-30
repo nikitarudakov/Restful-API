@@ -15,14 +15,19 @@ type adminRepository struct {
 	db *mongo.Client
 }
 
+// AdminRepository provide methods for managing entities for an entire api service
 type AdminRepository interface {
 	FindUserProfiles(colName string, page int64) ([]model.Profile, error)
 }
 
+// NewAdminRepository implicitly links AdminRepository to adminRepository
 func NewAdminRepository(db *mongo.Client) AdminRepository {
 	return &adminRepository{db: db}
 }
 
+// FindUserProfiles find all user profiles and sets pagination based on
+// provided page of type int64. Pagination is implemented with
+// methods options.Find().SetLimit() and options.Find().SetSkip()
 func (pr *adminRepository) FindUserProfiles(colName string, page int64) ([]model.Profile, error) {
 	coll := pr.db.Database(config.C.Database.Name).Collection(colName)
 

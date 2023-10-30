@@ -25,19 +25,19 @@ func ReadAuthHeader(h map[string][]string) (string, error) {
 	return authCred, nil
 }
 
-func DecodeBasicAuthCred(a string) (*[]string, error) {
+func DecodeBasicAuthCred(headerVal string) (*[]string, error) {
 	c := make([]string, 2)
 
-	if a != "" && strings.HasPrefix(a, authPrefix) {
-		encodedA := strings.Split(a, " ")[1]
-		decodedA, err := base64.StdEncoding.DecodeString(encodedA)
+	if headerVal != "" && strings.HasPrefix(headerVal, authPrefix) {
+		encodedHeaderVal := strings.Split(headerVal, " ")[1]
+		decodedHeaderVal, err := base64.StdEncoding.DecodeString(encodedHeaderVal)
 		if err != nil {
 			return nil, errors.New("authorization has been unsuccessful")
 		}
 
-		aSlice := strings.Split(string(decodedA), ":")
-		if len(aSlice) > 1 {
-			c[0], c[1] = aSlice[0], aSlice[1]
+		credSlice := strings.Split(string(decodedHeaderVal), ":")
+		if len(credSlice) > 1 {
+			c[0], c[1] = credSlice[0], credSlice[1]
 
 			return &c, nil
 		}

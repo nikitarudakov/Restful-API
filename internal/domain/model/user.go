@@ -1,7 +1,7 @@
 package model
 
 type User struct {
-	Username string `json:"username" bson:"username" validate:"required,min=4,sha256"`
+	Username string `json:"username" bson:"username" validate:"required,min=4"`
 	Password string `json:"password" bson:"password" validate:"required,min=8,containsany=!@#?*"`
 }
 

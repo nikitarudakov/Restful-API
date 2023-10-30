@@ -29,6 +29,10 @@ func SetUserRouter(r registry.Registry) *echo.Echo {
 		return r.NewAppController().User.Auth(username, password, ctx)
 	}))
 
+	userRouter.PUT("/password/update", func(ctx echo.Context) error {
+		return r.NewAppController().User.UpdatePassword(ctx)
+	})
+
 	userRouter.POST("/profiles/create", func(ctx echo.Context) error {
 		return r.NewAppController().User.CreateProfile(ctx)
 	})

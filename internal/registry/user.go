@@ -6,7 +6,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/usecase"
 )
 
-func (r *registry) NewUserController() controller.User {
+func (r *registry) NewUserController() controller.UserEndpointsHandler {
 	uu := usecase.NewUserUsecase(
 		repository.NewUserRepository(r.db),
 		repository.NewProfileRepository(r.db),
