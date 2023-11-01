@@ -9,10 +9,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func NewDB() (*mongo.Client, error) {
+func NewDB(dbCfg *config.Database) (*mongo.Database, error) {
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 
-	opts := options.Client().ApplyURI(config.C.Database.URL).SetServerAPIOptions(serverAPI)
+	opts := options.Client().ApplyURI(dbCfg.URL).SetServerAPIOptions(serverAPI)
 
 	// create a new client and connect to the server
 	client, err := mongo.Connect(context.TODO(), opts)
@@ -21,11 +21,11 @@ func NewDB() (*mongo.Client, error) {
 	}
 
 	// send a ping to confirm a successful connection
-	if err = client.Database(config.C.Database.Name).RunCommand(context.TODO(), bson.D{{"ping", 1}}).Err(); err != nil {
+	if err = client.Database(dbCfg.Name).RunCommand(context.TODO(), bson.D{{"ping", 1}}).Err(); err != nil {
 		return nil, err
 	}
 
 	log.Info().Msg("MongoDB client is running ...")
 
-	return client, nil
+	return client.Database(dbCfg.Name), nil
 }
