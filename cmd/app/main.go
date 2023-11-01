@@ -3,33 +3,47 @@ package main
 import (
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/adapter/controller"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/router"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/logger"
+	customValidator "git.foxminded.ua/foxstudent106092/user-management/tools/validator"
+	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"log"
 )
 
 func main() {
-	logger.InitLogger()
-
-	err := config.InitConfig()
+	cfg, err := config.InitConfig()
 	if err != nil {
 		panic(err)
 	}
 
-	db, err := datastore.NewDB()
+	logger.InitLogger(&cfg.Logger)
+
+	db, err := datastore.NewDB(&cfg.Database)
 	if err != nil {
 		panic(err)
 	}
 
-	r := registry.NewRegistry(db)
+	r := registry.NewRegistry(db, &cfg.Database)
+	appController := controller.NewAppController(r)
 
-	userRouter := router.SetUserRouter(r)
-	router.SetAdminGroupRouter(r, userRouter)
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
-	fmt.Println("Server listen at http://localhost" + ":8080")
-	if err = userRouter.Start(":8080"); err != nil {
+	e.Validator = &customValidator.CustomValidator{
+		Validator: validator.New(validator.WithRequiredStructEnabled()),
+	}
+
+	appController.User.InitRoutes(e)
+	appController.Admin.InitRoutes(e, &cfg.Admin)
+	appController.Auth.InitRoutes(e)
+
+	fmt.Println("Server listen at http://localhost" + ":" + cfg.Server.Port)
+	if err = e.Start(":" + cfg.Server.Port); err != nil {
 		log.Fatalln(err)
 	}
 }
