@@ -8,58 +8,45 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/usecase"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 )
 
-type userController struct {
+type UserController struct {
 	userUsecase usecase.UserManager
 }
 
-// UserEndpointsHandler stores methods (handlers) for processing requests from the server
-type UserEndpointsHandler interface {
-	Register(ctx echo.Context) error
-	Auth(username string, password string, ctx echo.Context) (bool, error)
-	UpdatePassword(ctx echo.Context) error
-	CreateProfile(ctx echo.Context) error
-	UpdateProfile(ctx echo.Context) error
-}
-
-// NewUserController implicitly links UserEndpointsHandler to userController
+// NewUserController implicitly links  *UserController to userController
 // Here to instantiate userController we provide usecase.UserManager
-func NewUserController(um usecase.UserManager) UserEndpointsHandler {
-	return &userController{userUsecase: um}
+func NewUserController(um usecase.UserManager) *UserController {
+	return &UserController{userUsecase: um}
 }
 
-// Register creates and stores new model.User in DB
-func (uc *userController) Register(ctx echo.Context) error {
-	var u model.User
+func (uc *UserController) InitRoutes(e *echo.Echo) {
+	userRouter := e.Group("/users")
 
-	u.Username = ctx.FormValue("username")
-	u.Password = ctx.FormValue("password")
+	userRouter.Use(middleware.BasicAuth(func(username, password string, ctx echo.Context) (bool, error) {
+		return uc.Auth(username, password)
+	}))
 
-	if err := ctx.Validate(u); err != nil {
-		return ctx.String(http.StatusForbidden, err.Error())
-	}
+	userRouter.PUT("/password/update", func(ctx echo.Context) error {
+		return uc.UpdatePassword(ctx)
+	})
 
-	hashedPassword, err := hashing.HashPassword(u.Password)
-	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
-	}
-	u.Password = hashedPassword
+	userRouter.POST("/profiles/create", func(ctx echo.Context) error {
+		return uc.CreateProfile(ctx)
+	})
 
-	err = uc.userUsecase.Create(&u)
-	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
-	}
-
-	return ctx.JSON(http.StatusOK, u)
+	userRouter.PUT("/profiles/update", func(ctx echo.Context) error {
+		return uc.UpdateProfile(ctx)
+	})
 }
 
 // Auth is authentication handler for BasicAuth middleware
 // It hashes credentials and compares them using subtle.ConstantTimeCompare
 // to prevent time attacks. If matches returns true which means
 // user was successfully authenticated and BasicAuth header was added
-func (uc *userController) Auth(username string, password string, ctx echo.Context) (bool, error) {
+func (uc *UserController) Auth(username string, password string) (bool, error) {
 	var u model.User
 
 	u.Username = username
@@ -80,7 +67,7 @@ func (uc *userController) Auth(username string, password string, ctx echo.Contex
 	return false, fmt.Errorf("username/password is incorrect: %w", err)
 }
 
-func (uc *userController) UpdatePassword(ctx echo.Context) error {
+func (uc *UserController) UpdatePassword(ctx echo.Context) error {
 	cred, err := uc.CheckUserAuth(ctx)
 	if err != nil {
 		return ctx.String(http.StatusForbidden, err.Error())
@@ -98,12 +85,12 @@ func (uc *userController) UpdatePassword(ctx echo.Context) error {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return ctx.JSON(http.StatusOK, nil)
+	return ctx.JSON(http.StatusOK, fmt.Sprintf("Password was updated!"))
 }
 
 // CreateProfile checks authentication, parses request data (params) to model.Profile
 // and creates model.Profile in DB
-func (uc *userController) CreateProfile(ctx echo.Context) error {
+func (uc *UserController) CreateProfile(ctx echo.Context) error {
 	cred, err := uc.CheckUserAuth(ctx)
 	if err != nil {
 		return ctx.String(http.StatusForbidden, err.Error())
@@ -114,7 +101,7 @@ func (uc *userController) CreateProfile(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	insertedID, err := uc.userUsecase.CreateProfile(p)
+	insertedID, err := uc.userUsecase.CreateProfile(p, (*cred)[0])
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
@@ -126,7 +113,7 @@ func (uc *userController) CreateProfile(ctx echo.Context) error {
 
 // UpdateProfile checks authentication, parses request data (params) to model.Profile
 // and updates model.Profile in DB
-func (uc *userController) UpdateProfile(ctx echo.Context) error {
+func (uc *UserController) UpdateProfile(ctx echo.Context) error {
 	cred, err := uc.CheckUserAuth(ctx)
 	if err != nil {
 		return ctx.String(http.StatusForbidden, err.Error())
@@ -137,7 +124,7 @@ func (uc *userController) UpdateProfile(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	err = uc.userUsecase.UpdateProfile(p)
+	err = uc.userUsecase.UpdateProfile(p, (*cred)[0])
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
@@ -146,7 +133,7 @@ func (uc *userController) UpdateProfile(ctx echo.Context) error {
 }
 
 // CheckUserAuth checks authentication of model.User
-func (uc *userController) CheckUserAuth(ctx echo.Context) (*[]string, error) {
+func (uc *UserController) CheckUserAuth(ctx echo.Context) (*[]string, error) {
 	a, err := auth.ReadAuthHeader(ctx.Request().Header)
 	if err != nil {
 		return nil, err
@@ -161,7 +148,7 @@ func (uc *userController) CheckUserAuth(ctx echo.Context) (*[]string, error) {
 }
 
 // ParseUserProfileFromServerRequest parses server request data to model.Profile
-func (uc *userController) ParseUserProfileFromServerRequest(
+func (uc *UserController) ParseUserProfileFromServerRequest(
 	ctx echo.Context,
 	cred *[]string) (*model.Profile, error) {
 
@@ -175,9 +162,6 @@ func (uc *userController) ParseUserProfileFromServerRequest(
 	// check if new Nickname was passed
 	if p.Nickname == "" {
 		p.Nickname = username // assign User username to Profile nickname
-		p.AuthUsername = username
-	} else {
-		p.AuthUsername = username
 	}
 
 	if err := ctx.Validate(p); err != nil {
