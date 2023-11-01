@@ -5,27 +5,24 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type userRepository struct {
-	db *mongo.Client
+type UserRepository struct {
+	db *mongo.Collection
 }
 
 // NewUserRepository implicitly links repository.UserRepository to userRepository
 // which uses mongo.Client as a database
-func NewUserRepository(db *mongo.Client) repository.UserRepository {
-	return &userRepository{db: db}
+func NewUserRepository(db *mongo.Collection) *UserRepository {
+	return &UserRepository{db: db}
 }
 
-func (ur *userRepository) Find(u *model.User) (*model.User, error) {
-	coll := getCollection(ur.db, u.TableName())
-
+func (ur *UserRepository) Find(u *model.User) (*model.User, error) {
 	filter := bson.M{"username": u.Username}
 
-	result := coll.FindOne(context.TODO(), filter)
+	result := ur.db.FindOne(context.TODO(), filter)
 
 	if err := result.Decode(u); err != nil {
 		return nil, err
@@ -34,15 +31,13 @@ func (ur *userRepository) Find(u *model.User) (*model.User, error) {
 	return u, nil
 }
 
-func (ur *userRepository) Create(u *model.User) (interface{}, error) {
-	coll := getCollection(ur.db, u.TableName())
-
+func (ur *UserRepository) Create(u *model.User) (interface{}, error) {
 	_, err := ur.Find(u)
 	if err == nil {
 		return nil, errors.New("user with such username already exists")
 	}
 
-	result, err := coll.InsertOne(context.TODO(), u)
+	result, err := ur.db.InsertOne(context.TODO(), u)
 	if err != nil {
 		return nil, fmt.Errorf("error updating/inserting user data: %w", err)
 	}
@@ -50,15 +45,13 @@ func (ur *userRepository) Create(u *model.User) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
-func (ur *userRepository) UpdateUsername(newUser *model.User, oldVal string) error {
-	coll := getCollection(ur.db, newUser.TableName())
-
+func (ur *UserRepository) UpdateUsername(newUser *model.User, oldVal string) error {
 	filter := bson.M{"username": oldVal}
 	update := bson.M{"$set": bson.M{
 		"username": newUser.Username,
 	}}
 
-	_, err := coll.UpdateOne(context.TODO(), filter, update)
+	_, err := ur.db.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
 	}
@@ -66,15 +59,13 @@ func (ur *userRepository) UpdateUsername(newUser *model.User, oldVal string) err
 	return nil
 }
 
-func (ur *userRepository) UpdatePassword(u *model.User) error {
-	coll := getCollection(ur.db, u.TableName())
-
+func (ur *UserRepository) UpdatePassword(u *model.User) error {
 	filter := bson.M{"username": u.Username}
 	update := bson.M{"$set": bson.M{
 		"password": u.Password,
 	}}
 
-	_, err := coll.UpdateOne(context.TODO(), filter, update)
+	_, err := ur.db.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
 	}

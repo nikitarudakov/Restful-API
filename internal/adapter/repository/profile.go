@@ -5,28 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/repository"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
 
-type profileRepository struct {
-	db *mongo.Client
+type ProfileRepository struct {
+	db *mongo.Collection
 }
 
 // NewProfileRepository implicitly links repository.ProfileRepository to profileRepository
-func NewProfileRepository(db *mongo.Client) repository.ProfileRepository {
-	return &profileRepository{db: db}
+func NewProfileRepository(db *mongo.Collection) *ProfileRepository {
+	return &ProfileRepository{db: db}
 }
 
-func (pr *profileRepository) Find(p *model.Profile) (*model.Profile, error) {
-	coll := getCollection(pr.db, p.TableName())
-
+func (pr *ProfileRepository) Find(p *model.Profile) (*model.Profile, error) {
 	filter := bson.M{"nickname": p.Nickname}
 
-	result := coll.FindOne(context.TODO(), filter)
+	result := pr.db.FindOne(context.TODO(), filter)
 
 	if err := result.Decode(p); err != nil {
 		return nil, err
@@ -35,9 +32,7 @@ func (pr *profileRepository) Find(p *model.Profile) (*model.Profile, error) {
 	return p, nil
 }
 
-func (pr *profileRepository) Create(p *model.Profile) (interface{}, error) {
-	coll := getCollection(pr.db, p.TableName())
-
+func (pr *ProfileRepository) Create(p *model.Profile) (interface{}, error) {
 	_, err := pr.Find(p)
 	if err == nil {
 		return nil, errors.New("profile with such nickname already exists")
@@ -47,7 +42,7 @@ func (pr *profileRepository) Create(p *model.Profile) (interface{}, error) {
 	p.CreatedAt = &now
 	p.UpdatedAt = &now
 
-	result, err := coll.InsertOne(context.TODO(), p)
+	result, err := pr.db.InsertOne(context.TODO(), p)
 	if err != nil {
 		return nil, fmt.Errorf("error updating/inserting user data: %w", err)
 	}
@@ -55,13 +50,11 @@ func (pr *profileRepository) Create(p *model.Profile) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
-func (pr *profileRepository) Update(p *model.Profile) error {
+func (pr *ProfileRepository) Update(p *model.Profile) error {
 	now := time.Now().Unix()
 	p.UpdatedAt = &now
 
-	coll := getCollection(pr.db, p.TableName())
-
-	filter := bson.M{"nickname": p.AuthUsername}
+	filter := bson.M{"nickname": p.Nickname}
 
 	update := bson.M{"$set": bson.M{
 		"nickname":   p.Nickname,
@@ -70,7 +63,7 @@ func (pr *profileRepository) Update(p *model.Profile) error {
 		"updated_at": time.Now().Unix(),
 	}}
 
-	result, err := coll.UpdateOne(context.TODO(), filter, update)
+	result, err := pr.db.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
 	}
