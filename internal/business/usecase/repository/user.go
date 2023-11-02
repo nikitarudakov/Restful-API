@@ -1,6 +1,6 @@
 package repository
 
-import "git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
+import "git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 
 type UserRepository interface {
 	Find(u *model.User) (*model.User, error)

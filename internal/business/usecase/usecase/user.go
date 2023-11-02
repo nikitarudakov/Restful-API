@@ -1,27 +1,18 @@
 package usecase
 
 import (
-	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
+	repository2 "git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase/repository"
 	"github.com/rs/zerolog/log"
 )
 
 type UserUsecase struct {
-	ur repository.UserRepository
-	pr repository.ProfileRepository
-}
-
-// UserManager contains methods for performing operations on User/Profile datatype
-type UserManager interface {
-	Create(u *model.User) error
-	Find(u *model.User) (*model.User, error)
-	UpdatePassword(u *model.User) error
-	CreateProfile(p *model.Profile, authUsername string) (interface{}, error)
-	UpdateProfile(p *model.Profile, authUsername string) error
+	ur repository2.UserRepository
+	pr repository2.ProfileRepository
 }
 
 // NewUserUsecase implicitly links UserManager to userUsecase struct
-func NewUserUsecase(ur repository.UserRepository, pr repository.ProfileRepository) *UserUsecase {
+func NewUserUsecase(ur repository2.UserRepository, pr repository2.ProfileRepository) *UserUsecase {
 	return &UserUsecase{ur: ur, pr: pr}
 }
 
@@ -45,6 +36,19 @@ func (uu *UserUsecase) Find(u *model.User) (*model.User, error) {
 	return userFromDB, nil
 }
 
+func (uu *UserUsecase) UpdateUsername(p *model.Profile, authUsername string) error {
+	if p.Nickname != authUsername {
+		var u model.User
+
+		u.Username = p.Nickname
+		if err := uu.ur.UpdateUsername(&u, authUsername); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (uu *UserUsecase) UpdatePassword(u *model.User) error {
 	if err := uu.ur.UpdatePassword(u); err != nil {
 		return err
@@ -55,19 +59,11 @@ func (uu *UserUsecase) UpdatePassword(u *model.User) error {
 
 // CreateProfile creates profile for model.User and stores it in DB with repository.ProfileRepository
 func (uu *UserUsecase) CreateProfile(p *model.Profile, authUsername string) (interface{}, error) {
-	if p.Nickname != authUsername {
-		var u model.User
-
-		u.Username = p.Nickname
-
-		if err := uu.ur.UpdateUsername(&u, authUsername); err != nil {
-			log.Error().Err(err).
-				Str("auth_username", authUsername).
-				Str("new_username", p.Nickname).
-				Msg("error updating username")
-
-			return nil, err
-		}
+	if err := uu.UpdateUsername(p, authUsername); err != nil {
+		log.Error().Err(err).
+			Str("auth_username", authUsername).
+			Str("new_username", p.Nickname).
+			Msg("error updating username")
 	}
 
 	insertedID, err := uu.pr.Create(p)
@@ -80,22 +76,14 @@ func (uu *UserUsecase) CreateProfile(p *model.Profile, authUsername string) (int
 
 // UpdateProfile updates profile of model.User in DB with repository.ProfileRepository
 func (uu *UserUsecase) UpdateProfile(p *model.Profile, authUsername string) error {
-	if p.Nickname != authUsername {
-		var u model.User
-
-		u.Username = p.Nickname
-
-		if err := uu.ur.UpdateUsername(&u, authUsername); err != nil {
-			log.Error().Err(err).
-				Str("auth_username", authUsername).
-				Str("new_username", p.Nickname).
-				Msg("error updating username")
-
-			return err
-		}
+	if err := uu.UpdateUsername(p, authUsername); err != nil {
+		log.Error().Err(err).
+			Str("auth_username", authUsername).
+			Str("new_username", p.Nickname).
+			Msg("error updating username")
 	}
 
-	err := uu.pr.Update(p)
+	err := uu.pr.Update(p, authUsername)
 	if err != nil {
 		return err
 	}

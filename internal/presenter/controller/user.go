@@ -1,11 +1,9 @@
 package controller
 
 import (
-	"crypto/subtle"
 	"fmt"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/usecase"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
+	middleware2 "git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/middleware"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -13,19 +11,35 @@ import (
 )
 
 type UserController struct {
-	userUsecase usecase.UserManager
+	userUsecase UserManager
+	AuthEndpointHandler
+}
+
+// UserManager contains methods for performing operations on User/Profile datatype
+type UserManager interface {
+	Create(u *model.User) error
+	Find(u *model.User) (*model.User, error)
+	UpdateUsername(p *model.Profile, authUsername string) error
+	UpdatePassword(u *model.User) error
+	CreateProfile(p *model.Profile, authUsername string) (interface{}, error)
+	UpdateProfile(p *model.Profile, authUsername string) error
 }
 
 // NewUserController implicitly links  *UserController to userController
 // Here to instantiate userController we provide usecase.UserManager
-func NewUserController(um usecase.UserManager) *UserController {
-	return &UserController{userUsecase: um}
+func NewUserController(um UserManager, ac AuthEndpointHandler) *UserController {
+	return &UserController{um, ac}
 }
 
 func (uc *UserController) InitRoutes(e *echo.Echo) {
 	userRouter := e.Group("/users")
 
 	userRouter.Use(middleware.BasicAuth(func(username, password string, ctx echo.Context) (bool, error) {
+		err := middleware2.GetUserAuth(ctx)
+		if err != nil {
+			return false, err
+		}
+
 		return uc.Auth(username, password)
 	}))
 
@@ -42,41 +56,13 @@ func (uc *UserController) InitRoutes(e *echo.Echo) {
 	})
 }
 
-// Auth is authentication handler for BasicAuth middleware
-// It hashes credentials and compares them using subtle.ConstantTimeCompare
-// to prevent time attacks. If matches returns true which means
-// user was successfully authenticated and BasicAuth header was added
-func (uc *UserController) Auth(username string, password string) (bool, error) {
-	var u model.User
-
-	u.Username = username
-
-	userFromDB, err := uc.userUsecase.Find(&u)
-	if err != nil {
-		return false, fmt.Errorf("user was not found: %w", err)
-	}
-
-	if subtle.ConstantTimeCompare([]byte(u.Username), []byte(userFromDB.Username)) == 1 {
-		err = hashing.CheckPassword(userFromDB.Password, password)
-		if err != nil {
-			return false, fmt.Errorf("username/password is incorrect: %w", err)
-		}
-		return true, nil
-	}
-
-	return false, fmt.Errorf("username/password is incorrect: %w", err)
-}
-
 func (uc *UserController) UpdatePassword(ctx echo.Context) error {
-	cred, err := uc.CheckUserAuth(ctx)
-	if err != nil {
-		return ctx.String(http.StatusForbidden, err.Error())
-	}
-
 	var u model.User
 
-	u.Username = (*cred)[0]
-	u.Password, err = hashing.HashPassword(ctx.FormValue("password"))
+	u.Username = fmt.Sprintf("%v", ctx.Get("username"))
+
+	password, err := hashing.HashPassword(ctx.FormValue("password"))
+	u.Password = password
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
@@ -91,17 +77,14 @@ func (uc *UserController) UpdatePassword(ctx echo.Context) error {
 // CreateProfile checks authentication, parses request data (params) to model.Profile
 // and creates model.Profile in DB
 func (uc *UserController) CreateProfile(ctx echo.Context) error {
-	cred, err := uc.CheckUserAuth(ctx)
-	if err != nil {
-		return ctx.String(http.StatusForbidden, err.Error())
-	}
+	username := fmt.Sprintf("%v", ctx.Get("username"))
 
-	p, err := uc.ParseUserProfileFromServerRequest(ctx, cred)
+	p, err := uc.ParseUserProfileFromServerRequest(ctx, username)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	insertedID, err := uc.userUsecase.CreateProfile(p, (*cred)[0])
+	insertedID, err := uc.userUsecase.CreateProfile(p, username)
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
@@ -114,17 +97,14 @@ func (uc *UserController) CreateProfile(ctx echo.Context) error {
 // UpdateProfile checks authentication, parses request data (params) to model.Profile
 // and updates model.Profile in DB
 func (uc *UserController) UpdateProfile(ctx echo.Context) error {
-	cred, err := uc.CheckUserAuth(ctx)
-	if err != nil {
-		return ctx.String(http.StatusForbidden, err.Error())
-	}
+	username := fmt.Sprintf("%v", ctx.Get("username"))
 
-	p, err := uc.ParseUserProfileFromServerRequest(ctx, cred)
+	p, err := uc.ParseUserProfileFromServerRequest(ctx, username)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	err = uc.userUsecase.UpdateProfile(p, (*cred)[0])
+	err = uc.userUsecase.UpdateProfile(p, username)
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
@@ -132,32 +112,15 @@ func (uc *UserController) UpdateProfile(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, nil)
 }
 
-// CheckUserAuth checks authentication of model.User
-func (uc *UserController) CheckUserAuth(ctx echo.Context) (*[]string, error) {
-	a, err := auth.ReadAuthHeader(ctx.Request().Header)
-	if err != nil {
-		return nil, err
-	}
-
-	cred, err := auth.DecodeBasicAuthCred(a)
-	if err != nil {
-		return nil, err
-	}
-
-	return cred, nil
-}
-
 // ParseUserProfileFromServerRequest parses server request data to model.Profile
 func (uc *UserController) ParseUserProfileFromServerRequest(
 	ctx echo.Context,
-	cred *[]string) (*model.Profile, error) {
+	username string) (*model.Profile, error) {
 
 	var p model.Profile
 	if err := ctx.Bind(&p); err != nil {
 		return nil, err
 	}
-
-	username := (*cred)[0]
 
 	// check if new Nickname was passed
 	if p.Nickname == "" {
