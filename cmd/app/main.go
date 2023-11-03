@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/adapter/controller"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase/usecase"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/registry"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/controller"
 	"git.foxminded.ua/foxstudent106092/user-management/logger"
 	customValidator "git.foxminded.ua/foxstudent106092/user-management/tools/validator"
 	"github.com/go-playground/validator/v10"
@@ -28,7 +29,6 @@ func main() {
 	}
 
 	r := registry.NewRegistry(db, &cfg.Database)
-	appController := controller.NewAppController(r)
 
 	e := echo.New()
 	e.Use(middleware.Logger())
@@ -38,9 +38,13 @@ func main() {
 		Validator: validator.New(validator.WithRequiredStructEnabled()),
 	}
 
-	appController.User.InitRoutes(e)
-	appController.Admin.InitRoutes(e, &cfg.Admin)
-	appController.Auth.InitRoutes(e)
+	uu := usecase.NewUserUsecase(r.Ur, r.Pr)
+
+	authController := controller.NewAuthController(uu, cfg)
+	authController.InitRoutes(e)
+
+	controller.NewUserController(uu, authController).InitRoutes(e)
+	controller.NewAdminController(r.Ar, &cfg.Admin, authController).InitRoutes(e)
 
 	fmt.Println("Server listen at http://localhost" + ":" + cfg.Server.Port)
 	if err = e.Start(":" + cfg.Server.Port); err != nil {
