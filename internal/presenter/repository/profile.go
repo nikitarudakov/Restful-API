@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -50,18 +50,13 @@ func (pr *ProfileRepository) Create(p *model.Profile) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
-func (pr *ProfileRepository) Update(p *model.Profile) error {
+func (pr *ProfileRepository) Update(p *model.Profile, authUsername string) error {
 	now := time.Now().Unix()
 	p.UpdatedAt = &now
 
-	filter := bson.M{"nickname": p.Nickname}
+	filter := bson.M{"nickname": authUsername}
 
-	update := bson.M{"$set": bson.M{
-		"nickname":   p.Nickname,
-		"first_name": p.FirstName,
-		"last_name":  p.LastName,
-		"updated_at": time.Now().Unix(),
-	}}
+	update := GenerateUpdateObject(*p, "bson")
 
 	result, err := pr.db.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
@@ -72,7 +67,10 @@ func (pr *ProfileRepository) Update(p *model.Profile) error {
 		return errors.New("there is no profile to update")
 	}
 
-	log.Info().Msg("Profile is updated!")
+	log.Trace().
+		Str("service", "update profile").
+		Str("doc", fmt.Sprintf("%+v", update)).
+		Send()
 
 	return nil
 }
