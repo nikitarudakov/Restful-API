@@ -27,10 +27,15 @@ type Logger struct {
 	LoggingLevel int8 `json:"logging_level"`
 }
 
+type Auth struct {
+	SecretKey string `mapstructure:"secret_key"`
+}
+
 // Config Create private data struct to hold config options.
 type Config struct {
 	Database Database `mapstructure:"db"`
 	Admin    Admin    `mapstructure:"admin_api"`
+	Auth     Auth     `mapstructure:"auth"`
 	Server   Server   `mapstructure:"server"`
 	Logger   Logger   `mapstructure:"logger"`
 }
