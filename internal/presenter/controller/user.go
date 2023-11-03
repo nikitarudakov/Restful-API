@@ -3,10 +3,8 @@ package controller
 import (
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	middleware2 "git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/middleware"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 )
 
@@ -34,14 +32,9 @@ func NewUserController(um UserManager, ac AuthEndpointHandler) *UserController {
 func (uc *UserController) InitRoutes(e *echo.Echo) {
 	userRouter := e.Group("/users")
 
-	userRouter.Use(middleware.BasicAuth(func(username, password string, ctx echo.Context) (bool, error) {
-		err := middleware2.GetUserAuth(ctx)
-		if err != nil {
-			return false, err
-		}
+	roles := []string{"admin", "user", "moderator"}
 
-		return uc.Auth(username, password)
-	}))
+	uc.InitAuthMiddleware(userRouter, roles)
 
 	userRouter.PUT("/password/update", func(ctx echo.Context) error {
 		return uc.UpdatePassword(ctx)

@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

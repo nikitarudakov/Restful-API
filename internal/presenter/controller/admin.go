@@ -3,28 +3,34 @@ package controller
 import (
 	"crypto/subtle"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/usecase/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase/repository"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 	"strconv"
 )
 
 type AdminController struct {
 	adminRepository repository.AdminRepository
+	cfgAdmin        *config.Admin
+	AuthEndpointHandler
 }
 
-func NewAdminController(ar repository.AdminRepository) *AdminController {
-	return &AdminController{adminRepository: ar}
+func NewAdminController(ar repository.AdminRepository,
+	cfgAdmin *config.Admin, ac AuthEndpointHandler) *AdminController {
+	return &AdminController{
+		ar,
+		cfgAdmin,
+		ac,
+	}
 }
 
-func (ac *AdminController) InitRoutes(e *echo.Echo, adminCfg *config.Admin) {
+func (ac *AdminController) InitRoutes(e *echo.Echo) {
 	admin := e.Group("/admin")
 
-	admin.Use(middleware.BasicAuth(func(username, password string, ctx echo.Context) (bool, error) {
-		return ac.Auth(username, password, adminCfg)
-	}))
+	roles := []string{"admin"}
+
+	ac.InitAuthMiddleware(admin, roles)
 
 	admin.GET("/users/profiles", func(ctx echo.Context) error {
 		return ac.GetUserProfiles(ctx)

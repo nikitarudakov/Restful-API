@@ -1,6 +1,6 @@
 package repository
 
-import "git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
+import "git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 
 // AdminRepository provide methods for managing entities for an entire api service
 type AdminRepository interface {
