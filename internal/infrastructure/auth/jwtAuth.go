@@ -69,6 +69,7 @@ func GetParseTokenFunc(cfgAuth *config.Auth, accessibleRoles []string) func(ctx 
 		}
 
 		ctx.Set("username", claimsUsername)
+		ctx.Set("role", claimsRole)
 
 		return token, nil
 	}

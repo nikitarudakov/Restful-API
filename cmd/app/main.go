@@ -43,8 +43,10 @@ func main() {
 	authController := controller.NewAuthController(uu, cfg)
 	authController.InitRoutes(e)
 
-	controller.NewUserController(uu, authController).InitRoutes(e)
-	controller.NewAdminController(r.Ar, &cfg.Admin, authController).InitRoutes(e)
+	userController := controller.NewUserController(uu, authController)
+	userController.InitRoutes(e)
+
+	controller.NewAdminController(r.Ur, r.Pr, &cfg.Admin, userController, authController).InitRoutes(e)
 
 	fmt.Println("Server listen at http://localhost" + ":" + cfg.Server.Port)
 	if err = e.Start(":" + cfg.Server.Port); err != nil {

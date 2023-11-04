@@ -1,24 +1,24 @@
 package repository
 
 import (
-	"fmt"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"reflect"
+	"time"
 )
 
-func GenerateUpdateObject(p interface{}, tagAlias string) bson.M {
+func GenerateUpdateObject(update model.Update, tagAlias string) bson.M {
 	var fields = make(map[string]interface{})
 	filter := bson.M{"$set": fields}
 
-	v := reflect.ValueOf(p)
+	v := reflect.ValueOf(update)
 	vType := v.Type()
-	pTypeOf := reflect.TypeOf(p)
+	pTypeOf := reflect.TypeOf(update)
 
 	for i := 0; i < v.NumField(); i++ {
 		fieldName := vType.Field(i).Name
 		fieldVal := v.Field(i)
 
-		fmt.Println(fieldName)
 		field, ok := pTypeOf.FieldByName(fieldName)
 
 		if fieldVal.CanInterface() && !fieldVal.IsZero() && ok {
@@ -27,6 +27,8 @@ func GenerateUpdateObject(p interface{}, tagAlias string) bson.M {
 			fields[tag] = fieldVal.Interface()
 		}
 	}
+
+	fields["updated_at"] = time.Now().Unix()
 
 	return filter
 }

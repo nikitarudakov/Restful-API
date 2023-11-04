@@ -9,6 +9,8 @@ type AdminEndpointHandler interface {
 	InitRoutes(e *echo.Echo)
 	Auth(username, password string, adminCfg *config.Admin) (bool, error)
 	GetUserProfiles(ctx echo.Context) error
+	ModifyUserProfile(ctx echo.Context) error
+	DeleteUserProfile(ctx echo.Context) error
 }
 
 type AuthEndpointHandler interface {
@@ -23,6 +25,5 @@ type UserEndpointsHandler interface {
 	InitRoutes(e *echo.Echo)
 	Auth(username string, password string) (bool, error)
 	UpdatePassword(ctx echo.Context) error
-	CreateProfile(ctx echo.Context) error
-	UpdateProfile(ctx echo.Context) error
+	UpdateUserProfile(ctx echo.Context) error
 }

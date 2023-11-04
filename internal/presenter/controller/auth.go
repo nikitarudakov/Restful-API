@@ -61,8 +61,8 @@ func (ac *AuthController) Login(ctx echo.Context) error {
 			fmt.Sprintf("username/password is incorrect: %s", err.Error()))
 	}
 
-	fmt.Println(ac.cfg.Auth.SecretKey)
-	token, err := auth.GenerateJWTToken(&u, []byte(ac.cfg.Auth.SecretKey))
+	authCfg := ac.cfg.Auth
+	token, err := auth.GenerateJWTToken(&u, []byte(authCfg.SecretKey))
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
@@ -103,6 +103,25 @@ func (ac *AuthController) Auth(username string, password string) (bool, error) {
 func (ac *AuthController) Register(ctx echo.Context) error {
 	var u model.User
 
+	if err := ac.registerUser(ctx, u); err != nil {
+		return err
+	}
+
+	switch ctx.FormValue("role") {
+	case "moderator":
+		return ctx.JSON(http.StatusOK, nil)
+	case "admin":
+		return ctx.JSON(http.StatusOK, nil)
+	}
+
+	if err := ac.registerProfile(ctx); err != nil {
+		return ctx.String(http.StatusBadRequest, err.Error())
+	}
+
+	return ctx.JSON(http.StatusOK, nil)
+}
+
+func (ac *AuthController) registerUser(ctx echo.Context, u model.User) error {
 	u.Username = ctx.FormValue("username")
 	u.Password = ctx.FormValue("password")
 	u.Role = ctx.FormValue("role")
@@ -130,10 +149,48 @@ func (ac *AuthController) Register(ctx echo.Context) error {
 	}
 	u.Password = hashedPassword
 
-	err = ac.userUsecase.Create(&u)
+	err = ac.userUsecase.CreateUser(&u)
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return ctx.JSON(http.StatusOK, u)
+	return nil
+}
+
+func (ac *AuthController) registerProfile(ctx echo.Context) error {
+	username := ctx.FormValue("username")
+
+	p, err := ac.parseValidateUserProfileCreate(ctx, username)
+	if err != nil {
+		return err
+	}
+
+	_, err = ac.userUsecase.CreateProfile(p)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ParseUserProfileFromServerRequest parses server request data to model.Profile
+func (ac *AuthController) parseValidateUserProfileCreate(
+	ctx echo.Context,
+	username string) (*model.Profile, error) {
+
+	var p model.Profile
+	if err := ctx.Bind(&p); err != nil {
+		return nil, err
+	}
+
+	// check if new Nickname was passed
+	if p.Nickname == "" {
+		p.Nickname = username // assign User username to Update nickname
+	}
+
+	if err := ctx.Validate(p); err != nil {
+		return nil, err
+	}
+
+	return &p, nil
 }

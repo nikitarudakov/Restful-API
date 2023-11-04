@@ -45,6 +45,17 @@ func (ur *UserRepository) Create(u *model.User) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
+func (ur *UserRepository) Delete(authUsername string) error {
+	filter := bson.M{"username": authUsername}
+
+	_, err := ur.db.DeleteOne(context.TODO(), filter)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ur *UserRepository) UpdateUsername(newUser *model.User, oldVal string) error {
 	filter := bson.M{"username": oldVal}
 	update := bson.M{"$set": bson.M{

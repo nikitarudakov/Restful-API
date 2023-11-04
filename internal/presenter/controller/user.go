@@ -5,6 +5,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 	"net/http"
 )
 
@@ -15,12 +16,12 @@ type UserController struct {
 
 // UserManager contains methods for performing operations on User/Profile datatype
 type UserManager interface {
-	Create(u *model.User) error
+	CreateUser(u *model.User) error
 	Find(u *model.User) (*model.User, error)
-	UpdateUsername(p *model.Profile, authUsername string) error
+	UpdateUsername(newUsername, oldUsername string) error
 	UpdatePassword(u *model.User) error
-	CreateProfile(p *model.Profile, authUsername string) (interface{}, error)
-	UpdateProfile(p *model.Profile, authUsername string) error
+	CreateProfile(p *model.Profile) (interface{}, error)
+	UpdateProfile(p *model.Update, authUsername string) error
 }
 
 // NewUserController implicitly links  *UserController to userController
@@ -40,12 +41,8 @@ func (uc *UserController) InitRoutes(e *echo.Echo) {
 		return uc.UpdatePassword(ctx)
 	})
 
-	userRouter.POST("/profiles/create", func(ctx echo.Context) error {
-		return uc.CreateProfile(ctx)
-	})
-
-	userRouter.PUT("/profiles/update", func(ctx echo.Context) error {
-		return uc.UpdateProfile(ctx)
+	userRouter.PUT("/profiles/:username/update", func(ctx echo.Context) error {
+		return uc.UpdateUserProfile(ctx)
 	})
 }
 
@@ -67,62 +64,46 @@ func (uc *UserController) UpdatePassword(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, fmt.Sprintf("Password was updated!"))
 }
 
-// CreateProfile checks authentication, parses request data (params) to model.Profile
-// and creates model.Profile in DB
-func (uc *UserController) CreateProfile(ctx echo.Context) error {
-	username := fmt.Sprintf("%v", ctx.Get("username"))
-
-	p, err := uc.ParseUserProfileFromServerRequest(ctx, username)
-	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
-	}
-
-	insertedID, err := uc.userUsecase.CreateProfile(p, username)
-	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
-	}
-
-	return ctx.JSON(http.StatusOK, struct {
-		Id interface{} `json:"_id"`
-	}{insertedID})
-}
-
-// UpdateProfile checks authentication, parses request data (params) to model.Profile
+// UpdateUserProfile checks authentication, parses request data (params) to model.Profile
 // and updates model.Profile in DB
-func (uc *UserController) UpdateProfile(ctx echo.Context) error {
-	username := fmt.Sprintf("%v", ctx.Get("username"))
+func (uc *UserController) UpdateUserProfile(ctx echo.Context) error {
+	username := ctx.Param("username")
 
-	p, err := uc.ParseUserProfileFromServerRequest(ctx, username)
+	update, err := uc.parseUserProfileUpdate(ctx, username)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	err = uc.userUsecase.UpdateProfile(p, username)
+	err = uc.userUsecase.UpdateProfile(update, username)
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	err = uc.userUsecase.UpdateUsername(update.Nickname, username)
+	if err != nil {
+		log.Error().Err(err).
+			Str("old_username", username).
+			Str("new_username", update.Nickname).
+			Msg("error updating username")
 	}
 
 	return ctx.JSON(http.StatusOK, nil)
 }
 
 // ParseUserProfileFromServerRequest parses server request data to model.Profile
-func (uc *UserController) ParseUserProfileFromServerRequest(
+func (uc *UserController) parseUserProfileUpdate(
 	ctx echo.Context,
-	username string) (*model.Profile, error) {
+	username string) (*model.Update, error) {
 
-	var p model.Profile
-	if err := ctx.Bind(&p); err != nil {
+	var update model.Update
+	if err := ctx.Bind(&update); err != nil {
 		return nil, err
 	}
 
 	// check if new Nickname was passed
-	if p.Nickname == "" {
-		p.Nickname = username // assign User username to Profile nickname
+	if update.Nickname == "" {
+		update.Nickname = username // assign User username to Update nickname
 	}
 
-	if err := ctx.Validate(p); err != nil {
-		return nil, err
-	}
-
-	return &p, nil
+	return &update, nil
 }
