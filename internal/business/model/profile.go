@@ -10,7 +10,7 @@ type Profile struct {
 }
 
 type Update struct {
-	Nickname  string `json:"nickname" bson:"nickname" query:"nickname" form:"nickname" `
+	Nickname  string `json:"nickname" bson:"nickname" query:"nickname"`
 	FirstName string `json:"first_name" query:"first_name" form:"first_name" bson:"first_name"`
 	LastName  string `json:"last_name" query:"last_name" form:"last_name" bson:"last_name"`
 	UpdatedAt *int64 `json:"updated_at" bson:"updated_at"`
