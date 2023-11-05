@@ -3,21 +3,21 @@ package controller
 import (
 	"crypto/subtle"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
 )
 
 type AdminController struct {
-	ur       repository.UserRepository
-	pr       repository.ProfileRepository
+	ur       repository.UserRepoManager
+	pr       repository.ProfileRepoManager
 	cfgAdmin *config.Admin
 	UserEndpointsHandler
 	AuthEndpointHandler
 }
 
-func NewAdminController(ur repository.UserRepository, pr repository.ProfileRepository,
+func NewAdminController(ur repository.UserRepoManager, pr repository.ProfileRepoManager,
 	cfgAdmin *config.Admin, uh UserEndpointsHandler, ah AuthEndpointHandler) *AdminController {
 
 	return &AdminController{ur, pr, cfgAdmin,

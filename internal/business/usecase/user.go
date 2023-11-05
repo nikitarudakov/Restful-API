@@ -2,16 +2,16 @@ package usecase
 
 import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	repository2 "git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 )
 
 type UserUsecase struct {
-	ur repository2.UserRepository
-	pr repository2.ProfileRepository
+	ur repository.UserRepoManager
+	pr repository.ProfileRepoManager
 }
 
 // NewUserUsecase implicitly links UserManager to userUsecase struct
-func NewUserUsecase(ur repository2.UserRepository, pr repository2.ProfileRepository) *UserUsecase {
+func NewUserUsecase(ur repository.UserRepoManager, pr repository.ProfileRepoManager) *UserUsecase {
 	return &UserUsecase{ur: ur, pr: pr}
 }
 

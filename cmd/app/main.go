@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase/usecase"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/controller"

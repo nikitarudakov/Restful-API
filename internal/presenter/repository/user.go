@@ -13,6 +13,14 @@ type UserRepository struct {
 	db *mongo.Collection
 }
 
+type UserRepoManager interface {
+	Find(u *model.User) (*model.User, error)
+	Create(u *model.User) (interface{}, error)
+	Delete(authUsername string) error
+	UpdateUsername(newUser *model.User, oldVal string) error
+	UpdatePassword(newUser *model.User) error
+}
+
 // NewUserRepository implicitly links repository.UserRepository to userRepository
 // which uses mongo.Client as a database
 func NewUserRepository(db *mongo.Collection) *UserRepository {

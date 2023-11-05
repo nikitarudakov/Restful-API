@@ -12,11 +12,19 @@ import (
 	"time"
 )
 
+const objPerPage = 5
+
 type ProfileRepository struct {
 	db *mongo.Collection
 }
 
-const objPerPage = 5
+type ProfileRepoManager interface {
+	Create(p *model.Profile) (interface{}, error)
+	Find(p *model.Profile) (*model.Profile, error)
+	Update(p *model.Update, authUsername string) error
+	Delete(authUsername string) error
+	ListUserProfiles(page int64) ([]model.Profile, error)
+}
 
 // NewProfileRepository implicitly links repository.ProfileRepository to profileRepository
 func NewProfileRepository(db *mongo.Collection) *ProfileRepository {
