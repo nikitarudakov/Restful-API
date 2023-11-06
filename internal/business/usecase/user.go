@@ -28,48 +28,27 @@ func (uu *UserUsecase) CreateUser(u *model.User) error {
 // CreateProfile creates profile for model.User and stores it in DB with repository.ProfileRepository
 func (uu *UserUsecase) CreateProfile(p *model.Profile) (interface{}, error) {
 	insertedID, err := uu.pr.Create(p)
-	if err != nil {
-		return nil, err
-	}
-
-	return insertedID, nil
+	return insertedID, err
 }
 
 // Find looks up for user (u *model.User) and returns it if found
 func (uu *UserUsecase) Find(u *model.User) (*model.User, error) {
 	userFromDB, err := uu.ur.Find(u)
-	if err != nil {
-		return nil, err
-	}
-
-	return userFromDB, nil
+	return userFromDB, err
 }
 
 func (uu *UserUsecase) UpdateUsername(newUsername, oldUsername string) error {
 	var u model.User
-
 	u.Username = newUsername
-	if err := uu.ur.UpdateUsername(&u, oldUsername); err != nil {
-		return err
-	}
 
-	return nil
+	return uu.ur.UpdateUsername(&u, oldUsername)
 }
 
 func (uu *UserUsecase) UpdatePassword(u *model.User) error {
-	if err := uu.ur.UpdatePassword(u); err != nil {
-		return err
-	}
-
-	return nil
+	return uu.ur.UpdatePassword(u)
 }
 
 // UpdateProfile updates profile of model.User in DB with repository.ProfileRepository
 func (uu *UserUsecase) UpdateProfile(p *model.Update, authUsername string) error {
-	err := uu.pr.Update(p, authUsername)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return uu.pr.Update(p, authUsername)
 }
