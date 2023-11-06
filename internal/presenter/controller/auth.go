@@ -7,6 +7,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
@@ -17,6 +18,12 @@ import (
 type AuthController struct {
 	userUsecase UserManager
 	cfg         *config.Config
+}
+
+type AuthResult struct {
+	User    *repository.InsertResult
+	Profile *repository.InsertResult
+	Err     string
 }
 
 func NewAuthController(uu UserManager, cfg *config.Config) *AuthController {
@@ -103,25 +110,30 @@ func (ac *AuthController) Auth(username string, password string) (bool, error) {
 func (ac *AuthController) Register(ctx echo.Context) error {
 	var u model.User
 
-	if err := ac.registerUser(ctx, u); err != nil {
-		return err
+	userResult, err := ac.registerUser(ctx, u)
+	if err != nil {
+		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
+	tempAuthResult := AuthResult{User: userResult}
 	switch ctx.FormValue("role") {
 	case "moderator":
-		return ctx.JSON(http.StatusOK, nil)
+		return ctx.JSON(http.StatusOK, tempAuthResult)
 	case "admin":
-		return ctx.JSON(http.StatusOK, nil)
+		return ctx.JSON(http.StatusOK, tempAuthResult)
 	}
 
-	if err := ac.registerProfile(ctx); err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+	profileResult, err := ac.registerProfile(ctx)
+	if err != nil {
+		tempAuthResult.Err = err.Error()
+
+		return ctx.JSON(http.StatusBadRequest, tempAuthResult)
 	}
 
-	return ctx.JSON(http.StatusOK, nil)
+	return ctx.JSON(http.StatusOK, AuthResult{User: userResult, Profile: profileResult, Err: ""})
 }
 
-func (ac *AuthController) registerUser(ctx echo.Context, u model.User) error {
+func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*repository.InsertResult, error) {
 	u.Username = ctx.FormValue("username")
 	u.Password = ctx.FormValue("password")
 	u.Role = ctx.FormValue("role")
@@ -131,46 +143,45 @@ func (ac *AuthController) registerUser(ctx echo.Context, u model.User) error {
 		Msg("register request")
 
 	if err := ctx.Validate(u); err != nil {
-		return ctx.String(http.StatusForbidden, err.Error())
+		return nil, err
 	}
 
 	if u.Role == "admin" {
 		if subtle.ConstantTimeCompare([]byte(u.Username), []byte(ac.cfg.Admin.Username)) != 1 ||
 			subtle.ConstantTimeCompare([]byte(u.Password), []byte(ac.cfg.Admin.Password)) != 1 {
 
-			return ctx.String(http.StatusForbidden,
-				errors.New("error: unable to register ADMIN user").Error())
+			return nil, errors.New("error: unable to register ADMIN user")
 		}
 	}
 
 	hashedPassword, err := hashing.HashPassword(u.Password)
 	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		return nil, err
 	}
 	u.Password = hashedPassword
 
-	err = ac.userUsecase.CreateUser(&u)
+	result, err := ac.userUsecase.CreateUser(&u)
 	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		return nil, err
 	}
 
-	return nil
+	return result, err
 }
 
-func (ac *AuthController) registerProfile(ctx echo.Context) error {
+func (ac *AuthController) registerProfile(ctx echo.Context) (*repository.InsertResult, error) {
 	username := ctx.FormValue("username")
 
 	p, err := ac.parseValidateUserProfileCreate(ctx, username)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = ac.userUsecase.CreateProfile(p)
+	result, err := ac.userUsecase.CreateProfile(p)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return result, nil
 }
 
 // ParseUserProfileFromServerRequest parses server request data to model.Profile

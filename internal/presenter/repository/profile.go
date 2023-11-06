@@ -7,6 +7,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
@@ -19,7 +20,7 @@ type ProfileRepository struct {
 }
 
 type ProfileRepoManager interface {
-	Create(p *model.Profile) (interface{}, error)
+	Create(p *model.Profile) (*InsertResult, error)
 	Find(p *model.Profile) (*model.Profile, error)
 	Update(p *model.Update, authUsername string) error
 	Delete(authUsername string) error
@@ -43,7 +44,7 @@ func (pr *ProfileRepository) Find(p *model.Profile) (*model.Profile, error) {
 	return p, nil
 }
 
-func (pr *ProfileRepository) Create(p *model.Profile) (interface{}, error) {
+func (pr *ProfileRepository) Create(p *model.Profile) (*InsertResult, error) {
 	_, err := pr.Find(p)
 	if err == nil {
 		return nil, errors.New("profile with such nickname already exists")
@@ -58,7 +59,12 @@ func (pr *ProfileRepository) Create(p *model.Profile) (interface{}, error) {
 		return nil, fmt.Errorf("error updating/inserting user data: %w", err)
 	}
 
-	return result.InsertedID, nil
+	insertedID, ok := result.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return nil, errors.New("conversion error")
+	}
+
+	return &InsertResult{Id: insertedID, Username: p.Nickname}, nil
 }
 
 func (pr *ProfileRepository) Delete(authUsername string) error {

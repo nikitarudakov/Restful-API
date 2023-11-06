@@ -16,19 +16,15 @@ func NewUserUsecase(ur repository.UserRepoManager, pr repository.ProfileRepoMana
 }
 
 // CreateUser creates new user and stores it in DB with repository.UserRepository
-func (uu *UserUsecase) CreateUser(u *model.User) error {
-	_, err := uu.ur.Create(u)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (uu *UserUsecase) CreateUser(u *model.User) (*repository.InsertResult, error) {
+	result, err := uu.ur.Create(u)
+	return result, err
 }
 
 // CreateProfile creates profile for model.User and stores it in DB with repository.ProfileRepository
-func (uu *UserUsecase) CreateProfile(p *model.Profile) (interface{}, error) {
-	insertedID, err := uu.pr.Create(p)
-	return insertedID, err
+func (uu *UserUsecase) CreateProfile(p *model.Profile) (*repository.InsertResult, error) {
+	result, err := uu.pr.Create(p)
+	return result, err
 }
 
 // Find looks up for user (u *model.User) and returns it if found

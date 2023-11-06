@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -16,11 +17,11 @@ type UserController struct {
 
 // UserManager contains methods for performing operations on User/Profile datatype
 type UserManager interface {
-	CreateUser(u *model.User) error
+	CreateUser(u *model.User) (*repository.InsertResult, error)
+	CreateProfile(p *model.Profile) (*repository.InsertResult, error)
 	Find(u *model.User) (*model.User, error)
 	UpdateUsername(newUsername, oldUsername string) error
 	UpdatePassword(u *model.User) error
-	CreateProfile(p *model.Profile) (interface{}, error)
 	UpdateProfile(p *model.Update, authUsername string) error
 }
 
@@ -61,7 +62,7 @@ func (uc *UserController) UpdatePassword(ctx echo.Context) error {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return ctx.JSON(http.StatusOK, fmt.Sprintf("Password was updated!"))
+	return ctx.JSON(http.StatusOK, nil)
 }
 
 // UpdateUserProfile checks authentication, parses request data (params) to model.Profile
