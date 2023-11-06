@@ -106,6 +106,9 @@ func (pr *ProfileRepository) ListUserProfiles(page int64) ([]model.Profile, erro
 
 	var results []model.Profile
 	cursor, err := pr.db.Find(context.TODO(), bson.M{}, opts)
+	if err != nil {
+		return nil, err
+	}
 
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		return nil, err
