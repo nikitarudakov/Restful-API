@@ -116,12 +116,6 @@ func (ac *AuthController) Register(ctx echo.Context) error {
 	}
 
 	tempAuthResult := AuthResult{User: userResult}
-	switch ctx.FormValue("role") {
-	case "moderator":
-		return ctx.JSON(http.StatusOK, tempAuthResult)
-	case "admin":
-		return ctx.JSON(http.StatusOK, tempAuthResult)
-	}
 
 	profileResult, err := ac.registerProfile(ctx)
 	if err != nil {
