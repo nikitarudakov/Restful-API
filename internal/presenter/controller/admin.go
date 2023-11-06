@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"crypto/subtle"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"github.com/labstack/echo/v4"
@@ -42,16 +41,6 @@ func (ac *AdminController) InitRoutes(e *echo.Echo) {
 	admin.DELETE("/users/profiles/:username/delete", func(ctx echo.Context) error {
 		return ac.DeleteUserProfile(ctx)
 	})
-}
-
-func (ac *AdminController) Auth(username, password string, adminCfg *config.Admin) (bool, error) {
-	if subtle.ConstantTimeCompare([]byte(username), []byte(adminCfg.Username)) == 1 &&
-		subtle.ConstantTimeCompare([]byte(password), []byte(adminCfg.Password)) == 1 {
-
-		return true, nil
-	}
-
-	return false, nil
 }
 
 func (ac *AdminController) GetUserProfiles(ctx echo.Context) error {
