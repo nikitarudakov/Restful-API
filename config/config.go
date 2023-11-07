@@ -41,10 +41,10 @@ type Config struct {
 }
 
 // InitConfig parses .json file to Config struct
-func InitConfig() (*Config, error) {
+func InitConfig(configName string) (*Config, error) {
 	config := &Config{}
 
-	viper.SetConfigName(".config")
+	viper.SetConfigName(configName)
 	viper.SetConfigType("json")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("..")
