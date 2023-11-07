@@ -21,7 +21,9 @@ func GenerateUpdateObject(update model.Update, tagAlias string) bson.M {
 
 		field, ok := pTypeOf.FieldByName(fieldName)
 
-		if fieldVal.CanInterface() && !fieldVal.IsZero() && ok {
+		isEmptySlice := fieldVal.Kind() == reflect.Slice && fieldVal.Len() == 0
+
+		if fieldVal.CanInterface() && (!fieldVal.IsZero() || isEmptySlice) && ok {
 			tag := field.Tag.Get(tagAlias)
 
 			fields[tag] = fieldVal.Interface()
