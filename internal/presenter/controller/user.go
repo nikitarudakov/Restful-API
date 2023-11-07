@@ -24,9 +24,8 @@ type UserManager interface {
 	CreateProfile(p *model.Profile) (*repository.InsertResult, error)
 	Find(u *model.User) (*model.User, error)
 	AddUpdateVoteTarget(u *model.Update) error
-	RetractVoteTarget() error
 	AddUpdateVoteSender(u *model.Update, vote *model.Vote) error
-	RetractVoteSender() error
+	RetractVote(uTarget *model.Update, uSender *model.Update) error
 	UpdateUsername(newUsername, oldUsername string) error
 	UpdatePassword(u *model.User) error
 	UpdateProfile(p *model.Update, authUsername string) error
@@ -58,7 +57,7 @@ func (uc *UserController) InitRoutes(e *echo.Echo) {
 	})
 
 	userRouter.DELETE("/profiles/:target/vote/retract", func(ctx echo.Context) error {
-		return uc.Vote(ctx)
+		return uc.RetractVote(ctx)
 	})
 }
 
@@ -142,6 +141,26 @@ func (uc *UserController) Vote(ctx echo.Context) error {
 		Str("target", voteObj.Target).
 		Str("service", "/users/profile/:username/vote").
 		Msg("vote has been recorded")
+
+	return ctx.JSON(http.StatusOK, nil)
+}
+
+func (uc *UserController) RetractVote(ctx echo.Context) error {
+	sender := fmt.Sprintf("%v", ctx.Get("username"))
+	target := ctx.Param("target")
+
+	targetUpdate := &model.Update{
+		Nickname: target,
+	}
+
+	senderUpdate := &model.Update{
+		Nickname: sender,
+	}
+
+	err := uc.userUsecase.RetractVote(targetUpdate, senderUpdate)
+	if err != nil {
+		return ctx.String(http.StatusInternalServerError, err.Error())
+	}
 
 	return ctx.JSON(http.StatusOK, nil)
 }

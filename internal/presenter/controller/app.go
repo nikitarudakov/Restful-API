@@ -24,4 +24,5 @@ type UserEndpointsHandler interface {
 	UpdatePassword(ctx echo.Context) error
 	UpdateUserProfile(ctx echo.Context) error
 	Vote(ctx echo.Context) error
+	RetractVote(ctx echo.Context) error
 }
