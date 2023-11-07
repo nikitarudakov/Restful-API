@@ -74,36 +74,13 @@ func (ac *AuthController) Login(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
+	ctx.Set("username", u.Username)
+
 	return ctx.JSON(http.StatusOK, echo.Map{
 		"token":    token,
 		"username": u.Username,
 		"message":  "Successfully logged in!",
 	})
-}
-
-// Auth is authentication handler for BasicAuth middleware
-// It hashes credentials and compares them using subtle.ConstantTimeCompare
-// to prevent time attacks. If matches returns true which means
-// user was successfully authenticated and BasicAuth header was added
-func (ac *AuthController) Auth(username string, password string) (bool, error) {
-	var u model.User
-
-	u.Username = username
-
-	userFromDB, err := ac.userUsecase.Find(&u)
-	if err != nil {
-		return false, fmt.Errorf("user was not found: %w", err)
-	}
-
-	if subtle.ConstantTimeCompare([]byte(u.Username), []byte(userFromDB.Username)) == 1 {
-		err = hashing.CheckPassword(userFromDB.Password, password)
-		if err != nil {
-			return false, fmt.Errorf("username/password is incorrect: %w", err)
-		}
-		return true, nil
-	}
-
-	return false, fmt.Errorf("username/password is incorrect: %w", err)
 }
 
 // Register creates and stores new model.User in DB

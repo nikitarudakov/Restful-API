@@ -16,7 +16,6 @@ type AuthEndpointHandler interface {
 	InitRoutes(e *echo.Echo)
 	InitAuthMiddleware(g *echo.Group, accessibleRoles []string)
 	Login(ctx echo.Context) error
-	Auth(username string, password string) (bool, error)
 	Register(ctx echo.Context) error
 }
 
@@ -24,4 +23,5 @@ type UserEndpointsHandler interface {
 	InitRoutes(e *echo.Echo)
 	UpdatePassword(ctx echo.Context) error
 	UpdateUserProfile(ctx echo.Context) error
+	Vote(ctx echo.Context) error
 }
