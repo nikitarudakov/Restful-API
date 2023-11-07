@@ -25,7 +25,7 @@ type UserManager interface {
 	Find(u *model.User) (*model.User, error)
 	AddUpdateVoteTarget(u *model.Update) error
 	AddUpdateVoteSender(u *model.Update, vote *model.Vote) error
-	RetractVote(uTarget *model.Update, uSender *model.Update) error
+	RetractVote(uSender *model.Update, uTarget *model.Update) error
 	UpdateUsername(newUsername, oldUsername string) error
 	UpdatePassword(u *model.User) error
 	UpdateProfile(p *model.Update, authUsername string) error
@@ -139,7 +139,7 @@ func (uc *UserController) Vote(ctx echo.Context) error {
 	log.Info().
 		Str("sender", voteObj.Sender).
 		Str("target", voteObj.Target).
-		Str("service", "/users/profile/:username/vote").
+		Str("service", "/users/profile/:target/vote").
 		Msg("vote has been recorded")
 
 	return ctx.JSON(http.StatusOK, nil)
@@ -149,15 +149,15 @@ func (uc *UserController) RetractVote(ctx echo.Context) error {
 	sender := fmt.Sprintf("%v", ctx.Get("username"))
 	target := ctx.Param("target")
 
-	targetUpdate := &model.Update{
-		Nickname: target,
-	}
-
 	senderUpdate := &model.Update{
 		Nickname: sender,
 	}
 
-	err := uc.userUsecase.RetractVote(targetUpdate, senderUpdate)
+	targetUpdate := &model.Update{
+		Nickname: target,
+	}
+
+	err := uc.userUsecase.RetractVote(senderUpdate, targetUpdate)
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
