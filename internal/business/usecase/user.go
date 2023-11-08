@@ -8,11 +8,16 @@ import (
 type UserUsecase struct {
 	ur repository.UserRepoManager
 	pr repository.ProfileRepoManager
+	vr repository.VoteRepoManager
 }
 
 // NewUserUsecase implicitly links UserManager to userUsecase struct
-func NewUserUsecase(ur repository.UserRepoManager, pr repository.ProfileRepoManager) *UserUsecase {
-	return &UserUsecase{ur: ur, pr: pr}
+func NewUserUsecase(
+	ur repository.UserRepoManager,
+	pr repository.ProfileRepoManager,
+	vr repository.VoteRepoManager,
+) *UserUsecase {
+	return &UserUsecase{ur: ur, pr: pr, vr: vr}
 }
 
 // CreateUser creates new user and stores it in DB with repository.UserRepository

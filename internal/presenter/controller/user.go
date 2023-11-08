@@ -23,9 +23,9 @@ type UserManager interface {
 	CreateUser(u *model.User) (*repository.InsertResult, error)
 	CreateProfile(p *model.Profile) (*repository.InsertResult, error)
 	Find(u *model.User) (*model.User, error)
-	AddUpdateVoteTarget(u *model.Update) error
-	AddUpdateVoteSender(u *model.Update, vote *model.Vote) error
-	RetractVote(uSender *model.Update, uTarget *model.Update) error
+	StoreVote(v *model.Vote) (*repository.VoteInsertResult, error)
+	RetractVote(u *model.Update, sender string) error
+	GetRating(target string) (*model.Rating, error)
 	UpdateUsername(newUsername, oldUsername string) error
 	UpdatePassword(u *model.User) error
 	UpdateProfile(p *model.Update, authUsername string) error
@@ -58,6 +58,10 @@ func (uc *UserController) InitRoutes(e *echo.Echo) {
 
 	userRouter.DELETE("/profiles/:target/vote/retract", func(ctx echo.Context) error {
 		return uc.RetractVote(ctx)
+	})
+
+	userRouter.GET("/profiles/:target/rating", func(ctx echo.Context) error {
+		return uc.GetRating(ctx)
 	})
 }
 
@@ -106,63 +110,42 @@ func (uc *UserController) UpdateUserProfile(ctx echo.Context) error {
 }
 
 func (uc *UserController) Vote(ctx echo.Context) error {
-	voteObj, err := uc.parseUserVote(ctx)
+	vote, err := uc.parseUserVote(ctx)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 
-	if voteObj.Target == voteObj.Sender {
-		return ctx.JSON(http.StatusBadRequest, errors.New("self-voting is forbidden"))
-	}
-
-	senderUpdate := &model.Update{
-		Nickname: voteObj.Sender,
-	}
-
-	err = uc.userUsecase.AddUpdateVoteSender(senderUpdate, voteObj)
+	result, err := uc.userUsecase.StoreVote(vote)
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
-	targetUpdate := &model.Update{
-		Nickname: voteObj.Target,
-		Rating:   &voteObj.Vote,
-	}
-
-	fmt.Printf("%+v\n", targetUpdate)
-
-	err = uc.userUsecase.AddUpdateVoteTarget(targetUpdate)
-	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
-	}
-
-	log.Info().
-		Str("sender", voteObj.Sender).
-		Str("target", voteObj.Target).
-		Str("service", "/users/profile/:target/vote").
-		Msg("vote has been recorded")
-
-	return ctx.JSON(http.StatusOK, nil)
+	return ctx.JSON(http.StatusOK, result)
 }
 
 func (uc *UserController) RetractVote(ctx echo.Context) error {
 	sender := fmt.Sprintf("%v", ctx.Get("username"))
 	target := ctx.Param("target")
 
-	senderUpdate := &model.Update{
-		Nickname: sender,
-	}
+	var update = &model.Update{Nickname: target}
 
-	targetUpdate := &model.Update{
-		Nickname: target,
-	}
-
-	err := uc.userUsecase.RetractVote(senderUpdate, targetUpdate)
+	err := uc.userUsecase.RetractVote(update, sender)
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, nil)
+}
+
+func (uc *UserController) GetRating(ctx echo.Context) error {
+	target := ctx.Param("target")
+
+	rating, err := uc.userUsecase.GetRating(target)
+	if err != nil {
+		return ctx.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return ctx.JSON(http.StatusOK, rating)
 }
 
 // ParseUserProfileFromServerRequest parses server request data to model.Profile
@@ -186,6 +169,10 @@ func (uc *UserController) parseUserProfileUpdate(
 func (uc *UserController) parseUserVote(ctx echo.Context) (*model.Vote, error) {
 	sender := fmt.Sprintf("%v", ctx.Get("username"))
 	target := ctx.Param("target")
+
+	if sender == target {
+		return nil, errors.New("self-voting is forbidden (bad request)")
+	}
 
 	voteStr := ctx.FormValue("vote")
 	vote, err := strconv.Atoi(voteStr)

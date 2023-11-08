@@ -28,7 +28,7 @@ func InitRoutesWithControllers(cfg *config.Config) *echo.Echo {
 
 	r := registry.NewRegistry(db, &cfg.Database)
 
-	uu := usecase.NewUserUsecase(r.Ur, r.Pr)
+	uu := usecase.NewUserUsecase(r.Ur, r.Pr, r.Vr)
 
 	authController := controller.NewAuthController(uu, cfg)
 	authController.InitRoutes(e)

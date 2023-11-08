@@ -11,6 +11,7 @@ type Database struct {
 	Name        string `json:"name"`
 	UserRepo    string `mapstructure:"user_repo_name"`
 	ProfileRepo string `mapstructure:"profile_repo_name"`
+	VoteRepo    string `mapstructure:"ratings_repo_name"`
 	URL         string `json:"url"`
 }
 

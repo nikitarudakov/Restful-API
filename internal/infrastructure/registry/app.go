@@ -9,11 +9,13 @@ import (
 type Registry struct {
 	Ur repository.UserRepoManager
 	Pr repository.ProfileRepoManager
+	Vr repository.VoteRepoManager
 }
 
 func NewRegistry(db *mongo.Database, dbCfg *config.Database) *Registry {
 	return &Registry{
 		Ur: repository.NewUserRepository(db.Collection(dbCfg.UserRepo)),
 		Pr: repository.NewProfileRepository(db.Collection(dbCfg.ProfileRepo)),
+		Vr: repository.NewVoteRepository(db.Collection(dbCfg.VoteRepo)),
 	}
 }

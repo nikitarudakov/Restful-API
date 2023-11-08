@@ -25,4 +25,5 @@ type UserEndpointsHandler interface {
 	UpdateUserProfile(ctx echo.Context) error
 	Vote(ctx echo.Context) error
 	RetractVote(ctx echo.Context) error
+	GetRating(ctx echo.Context) error
 }
