@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -16,7 +17,8 @@ import (
 const objPerPage = 5
 
 type ProfileRepository struct {
-	db *mongo.Collection
+	db    *mongo.Collection
+	cache *cache.Database
 }
 
 type ProfileRepoManager interface {
@@ -28,8 +30,8 @@ type ProfileRepoManager interface {
 }
 
 // NewProfileRepository implicitly links repository.ProfileRepository to profileRepository
-func NewProfileRepository(db *mongo.Collection) *ProfileRepository {
-	return &ProfileRepository{db: db}
+func NewProfileRepository(db *mongo.Collection, cache *cache.Database) *ProfileRepository {
+	return &ProfileRepository{db: db, cache: cache}
 }
 
 func (pr *ProfileRepository) Find(p *model.Profile) (*model.Profile, error) {
@@ -108,9 +110,18 @@ func (pr *ProfileRepository) Update(modelUpdate *model.Update, authUsername stri
 // provided page of type int64. Pagination is implemented with
 // methods options.Find().SetLimit() and options.Find().SetSkip()
 func (pr *ProfileRepository) ListUserProfiles(page int64) ([]model.Profile, error) {
+	var results []model.Profile
+
 	opts := options.Find().SetLimit(objPerPage * page).SetSkip(objPerPage * (page - 1))
 
-	var results []model.Profile
+	log.Info().Msg("HERE 1")
+
+	if err := pr.cache.GetCache("profiles", &results); err == nil {
+		return results, nil
+	}
+
+	log.Info().Msg("HERE 2")
+
 	cursor, err := pr.db.Find(context.TODO(), bson.M{}, opts)
 	if err != nil {
 		return nil, err
@@ -118,6 +129,10 @@ func (pr *ProfileRepository) ListUserProfiles(page int64) ([]model.Profile, erro
 
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		return nil, err
+	}
+
+	if err = pr.cache.SetCache("profiles", &results); err != nil {
+		log.Warn().Str("service", "rating caching").Err(err).Send()
 	}
 
 	return results, nil

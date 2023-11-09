@@ -18,7 +18,7 @@ func NewVoteUsecase(pr repository.ProfileRepoManager, vr repository.VoteRepoMana
 }
 
 func (vc *VoteUsecase) GetRating(target string) (*model.Rating, error) {
-	rating, err := vc.vr.CalcRating(target)
+	rating, err := vc.vr.GetRating(target)
 	return rating, err
 }
 

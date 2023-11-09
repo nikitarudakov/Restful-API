@@ -15,6 +15,11 @@ type Database struct {
 	URL         string `json:"url"`
 }
 
+type Cache struct {
+	Server string `json:"server"`
+	Port   string `json:"PORT"`
+}
+
 type Admin struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -37,6 +42,7 @@ type Config struct {
 	Database Database `mapstructure:"db"`
 	Admin    Admin    `mapstructure:"admin_api"`
 	Auth     Auth     `mapstructure:"auth"`
+	Cache    Cache    `mapstructure:"cache"`
 	Server   Server   `mapstructure:"server"`
 	Logger   Logger   `mapstructure:"logger"`
 }

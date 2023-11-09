@@ -17,7 +17,7 @@ func main() {
 
 	e := http.InitRoutesWithControllers(cfg)
 
-	log.Info().Msg("Server listen at http://localhost" + ":" + cfg.Server.Port)
+	log.Info().Msg("Server is running at http://localhost" + ":" + cfg.Server.Port)
 	if err = e.Start(":" + cfg.Server.Port); err != nil {
 		log.Fatal().Err(err).Send()
 	}
