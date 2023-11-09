@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
+	repoerr "git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/appErrors/repoerr"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,7 +19,7 @@ type VoteRepoManager interface {
 	Find(v *model.Vote, isTarget bool, isSender bool) (*model.Vote, error)
 	Create(v *model.Vote) (*VoteInsertResult, error)
 	Delete(v *model.Vote, isTarget bool, isSender bool) error
-	CalcTotalRating(target string) (*model.Rating, error)
+	CalcRating(target string) (*model.Rating, error)
 }
 
 func NewVoteRepository(db *mongo.Collection) *VoteRepository {
@@ -81,7 +82,7 @@ func (vr *VoteRepository) Delete(v *model.Vote, isTarget bool, isSender bool) er
 	return nil
 }
 
-func (vr *VoteRepository) CalcTotalRating(target string) (*model.Rating, error) {
+func (vr *VoteRepository) CalcRating(target string) (*model.Rating, error) {
 	pipeline := bson.A{
 		bson.D{{"$match", bson.D{{"target", target}}}},
 		bson.D{{"$group", bson.D{
@@ -91,17 +92,19 @@ func (vr *VoteRepository) CalcTotalRating(target string) (*model.Rating, error) 
 
 	cursor, err := vr.db.Aggregate(context.TODO(), pipeline)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error calc rating: %w", err)
 	}
 
 	var results []model.Rating
 	if err = cursor.All(context.TODO(), &results); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error calc rating: %w", err)
 	}
 
 	if len(results) > 0 {
 		return &results[0], nil
 	}
 
-	return nil, nil
+	return nil, &repoerr.CalcRatingUserError{
+		Msg: fmt.Sprintf("error calc rating: user %s was not found", target),
+	}
 }

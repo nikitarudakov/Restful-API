@@ -50,7 +50,7 @@ func (ac *AdminController) GetUserProfiles(ctx echo.Context) error {
 	if pageStr != "" {
 		parsedPage, err := strconv.ParseInt(ctx.QueryParam("page"), 10, 64)
 		if err != nil {
-			return ctx.String(http.StatusBadRequest, err.Error())
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
 		page = parsedPage
@@ -58,7 +58,7 @@ func (ac *AdminController) GetUserProfiles(ctx echo.Context) error {
 
 	result, err := ac.pr.ListUserProfiles(page)
 	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	return ctx.JSON(http.StatusOK, result)
@@ -67,7 +67,7 @@ func (ac *AdminController) GetUserProfiles(ctx echo.Context) error {
 func (ac *AdminController) ModifyUserProfile(ctx echo.Context) error {
 	err := ac.UpdateUserProfile(ctx)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	return nil

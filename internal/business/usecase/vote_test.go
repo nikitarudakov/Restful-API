@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func GetUserUsecase() *UserUsecase {
+func GetVoteUsecase() *VoteUsecase {
 	cfg, err := config.InitConfig(".usecaseConfig.json")
 	if err != nil {
 		panic(err)
@@ -24,11 +24,11 @@ func GetUserUsecase() *UserUsecase {
 
 	r := registry.NewRegistry(db, &cfg.Database)
 
-	return NewUserUsecase(r.Ur, r.Pr, r.Vr)
+	return NewVoteUsecase(r.Pr, r.Vr)
 }
 
 func TestUserUsecase_RetractVote(t *testing.T) {
-	uu := GetUserUsecase()
+	uu := GetVoteUsecase()
 
 	update := &model.Update{Nickname: "user2"}
 	sender := "user1"
@@ -51,7 +51,7 @@ func TestUserUsecase_RetractVote(t *testing.T) {
 }
 
 func TestUserUsecase_StoreVote(t *testing.T) {
-	uu := GetUserUsecase()
+	uu := GetVoteUsecase()
 
 	now := time.Now().Unix()
 
@@ -59,7 +59,7 @@ func TestUserUsecase_StoreVote(t *testing.T) {
 		Sender:  "user1",
 		Target:  "user2",
 		Vote:    1,
-		VotedAt: &now,
+		VotedAt: now,
 	}
 
 	t.Run("store vote", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestUserUsecase_StoreVote(t *testing.T) {
 		Sender:  "user1",
 		Target:  "user2",
 		Vote:    1,
-		VotedAt: &now,
+		VotedAt: now,
 	}
 
 	t.Run("try store vote twice", func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestUserUsecase_StoreVote(t *testing.T) {
 		Sender:  "user1",
 		Target:  "user2",
 		Vote:    -1,
-		VotedAt: &now,
+		VotedAt: now,
 	}
 
 	t.Run("try store vote again within 1 hour timespan", func(t *testing.T) {

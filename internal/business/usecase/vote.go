@@ -8,31 +8,36 @@ import (
 	"time"
 )
 
-func (uu *UserUsecase) GetRating(target string) (*model.Rating, error) {
-	rating, err := uu.vr.CalcTotalRating(target)
+type VoteUsecase struct {
+	pr repository.ProfileRepoManager
+	vr repository.VoteRepoManager
+}
+
+func NewVoteUsecase(pr repository.ProfileRepoManager, vr repository.VoteRepoManager) *VoteUsecase {
+	return &VoteUsecase{pr: pr, vr: vr}
+}
+
+func (vc *VoteUsecase) GetRating(target string) (*model.Rating, error) {
+	rating, err := vc.vr.CalcRating(target)
 	return rating, err
 }
 
-func (uu *UserUsecase) RetractVote(u *model.Update, sender string) error {
+func (vc *VoteUsecase) RetractVote(u *model.Update, sender string) error {
 	var vote = &model.Vote{
 		Sender: sender,
 		Target: u.Nickname,
 	}
 
-	vote, err := uu.vr.Find(vote, true, true)
+	vote, err := vc.vr.Find(vote, true, true)
 	if err != nil {
 		return errors.New("no vote has been recorded")
 	}
 
-	if err = uu.vr.Delete(vote, true, true); err != nil {
-		return err
-	}
-
-	return nil
+	return vc.vr.Delete(vote, true, true)
 }
 
-func (uu *UserUsecase) StoreVote(v *model.Vote) (*repository.VoteInsertResult, error) {
-	lastStoredVote, err := uu.vr.Find(v, true, true)
+func (vc *VoteUsecase) StoreVote(v *model.Vote) (*repository.VoteInsertResult, error) {
+	lastStoredVote, err := vc.vr.Find(v, true, true)
 	if err != nil {
 		log.Warn().Str("service", "last stored vote").Err(err).Send()
 	}
@@ -47,13 +52,13 @@ func (uu *UserUsecase) StoreVote(v *model.Vote) (*repository.VoteInsertResult, e
 		}
 	}
 
-	result, err := uu.vr.Create(v)
+	result, err := vc.vr.Create(v)
 	return result, err
 }
 
 func validateTimespanBetweenVotes(newVote *model.Vote, lastVote *model.Vote) error {
-	timeOfNewVote := time.Unix(*newVote.VotedAt, 0)
-	timeOfLastVote := time.Unix(*lastVote.VotedAt, 0)
+	timeOfNewVote := time.Unix(newVote.VotedAt, 0)
+	timeOfLastVote := time.Unix(lastVote.VotedAt, 0)
 
 	timeDiff := timeOfNewVote.Sub(timeOfLastVote)
 

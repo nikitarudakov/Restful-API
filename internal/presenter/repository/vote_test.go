@@ -28,10 +28,10 @@ func TestVoteRepository_CalcTotalRating(t *testing.T) {
 	vr := GetVoteRepository()
 
 	t.Run("calculate agg rating for user2", func(t *testing.T) {
-		rating, err := vr.CalcTotalRating(target)
+		rating, err := vr.CalcRating(target)
 
 		t.Logf("%+v\n", rating)
-		t.Logf("%d", *rating.Rating)
+		t.Logf("%d", rating.Rating)
 		t.Log(err)
 
 		assert.Nil(t, err)

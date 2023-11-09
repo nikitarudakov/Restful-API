@@ -28,12 +28,15 @@ func InitRoutesWithControllers(cfg *config.Config) *echo.Echo {
 
 	r := registry.NewRegistry(db, &cfg.Database)
 
-	uu := usecase.NewUserUsecase(r.Ur, r.Pr, r.Vr)
+	uu := usecase.NewUserUsecase(r.Ur, r.Pr)
+	vu := usecase.NewVoteUsecase(r.Pr, r.Vr)
 
 	authController := controller.NewAuthController(uu, cfg)
 	authController.InitRoutes(e)
 
-	userController := controller.NewUserController(uu, authController)
+	voteController := controller.NewVoteController(vu, authController)
+
+	userController := controller.NewUserController(uu, voteController, authController)
 	userController.InitRoutes(e)
 
 	adminController := controller.NewAdminController(r.Ur, r.Pr, &cfg.Admin, userController, authController)

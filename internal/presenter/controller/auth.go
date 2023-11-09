@@ -23,7 +23,6 @@ type AuthController struct {
 type AuthResult struct {
 	User    *repository.InsertResult
 	Profile *repository.InsertResult
-	Err     string
 }
 
 func NewAuthController(uu UserManager, cfg *config.Config) *AuthController {
@@ -47,6 +46,24 @@ func (ac *AuthController) InitAuthMiddleware(g *echo.Group, accessibleRoles []st
 	g.Use(echojwt.WithConfig(tokenConfig))
 }
 
+func (ac *AuthController) UpdatePassword(ctx echo.Context) error {
+	var u model.User
+
+	u.Username = fmt.Sprintf("%v", ctx.Get("username"))
+
+	password, err := hashing.HashPassword(ctx.FormValue("password"))
+	u.Password = password
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	if err = ac.userUsecase.UpdatePassword(&u); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return ctx.JSON(http.StatusOK, nil)
+}
+
 func (ac *AuthController) Login(ctx echo.Context) error {
 	var u model.User
 
@@ -55,7 +72,7 @@ func (ac *AuthController) Login(ctx echo.Context) error {
 
 	userFromDB, err := ac.userUsecase.Find(&u)
 	if err != nil {
-		return ctx.String(http.StatusForbidden,
+		return echo.NewHTTPError(http.StatusForbidden,
 			fmt.Sprintf("user was not found: %s", err.Error()))
 	}
 
@@ -64,14 +81,14 @@ func (ac *AuthController) Login(ctx echo.Context) error {
 	if err = hashing.CheckPassword(userFromDB.Password, password); err != nil ||
 		subtle.ConstantTimeCompare([]byte(u.Username), []byte(userFromDB.Username)) != 1 {
 
-		return ctx.String(http.StatusForbidden,
+		return echo.NewHTTPError(http.StatusForbidden,
 			fmt.Sprintf("username/password is incorrect: %s", err.Error()))
 	}
 
 	authCfg := ac.cfg.Auth
 	token, err := auth.GenerateJWTToken(&u, []byte(authCfg.SecretKey))
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	ctx.Set("username", u.Username)
@@ -89,19 +106,15 @@ func (ac *AuthController) Register(ctx echo.Context) error {
 
 	userResult, err := ac.registerUser(ctx, u)
 	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-
-	tempAuthResult := AuthResult{User: userResult}
 
 	profileResult, err := ac.registerProfile(ctx)
 	if err != nil {
-		tempAuthResult.Err = err.Error()
-
-		return ctx.JSON(http.StatusBadRequest, tempAuthResult)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	return ctx.JSON(http.StatusOK, AuthResult{User: userResult, Profile: profileResult, Err: ""})
+	return ctx.JSON(http.StatusOK, AuthResult{User: userResult, Profile: profileResult})
 }
 
 func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*repository.InsertResult, error) {
