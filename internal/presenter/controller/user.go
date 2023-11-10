@@ -10,7 +10,6 @@ import (
 
 type UserController struct {
 	userUsecase UserManager
-	voteHandler VoteEndpointsHandler
 	AuthEndpointHandler
 }
 
@@ -26,8 +25,8 @@ type UserManager interface {
 
 // NewUserController implicitly links  *UserController to userController
 // Here to instantiate userController we provide usecase.UserManager
-func NewUserController(um UserManager, vh VoteEndpointsHandler, ac AuthEndpointHandler) *UserController {
-	return &UserController{um, vh, ac}
+func NewUserController(um UserManager, ac AuthEndpointHandler) *UserController {
+	return &UserController{um, ac}
 }
 
 func (uc *UserController) InitRoutes(e *echo.Echo) {
@@ -37,15 +36,9 @@ func (uc *UserController) InitRoutes(e *echo.Echo) {
 
 	uc.InitAuthMiddleware(userRouter, roles)
 
-	userRouter.PUT("/password/update", func(ctx echo.Context) error {
-		return uc.UpdatePassword(ctx)
-	})
-
 	userRouter.PUT("/profiles/:username/update", func(ctx echo.Context) error {
 		return uc.UpdateUserProfile(ctx)
 	})
-
-	uc.voteHandler.InitRoutes(userRouter)
 }
 
 // UpdateUserProfile checks authentication, parses request data (params) to model.Profile

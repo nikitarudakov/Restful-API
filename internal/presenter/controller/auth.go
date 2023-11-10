@@ -39,6 +39,10 @@ func (ac *AuthController) InitRoutes(e *echo.Echo) {
 	regRouter.POST("/login", func(ctx echo.Context) error {
 		return ac.Login(ctx)
 	})
+
+	regRouter.PUT("/password/update", func(ctx echo.Context) error {
+		return ac.UpdatePassword(ctx)
+	})
 }
 
 func (ac *AuthController) InitAuthMiddleware(g *echo.Group, accessibleRoles []string) {

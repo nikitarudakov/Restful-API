@@ -27,12 +27,14 @@ type VoteManager interface {
 	GetRating(target string) (*model.Rating, error)
 }
 
-func (vc *VoteController) InitRoutes(g *echo.Group) {
+func (vc *VoteController) InitRoutes(e *echo.Echo) {
 	roles := []string{"admin", "moderator", "user"}
+
+	g := e.Group("/rating")
 
 	vc.InitAuthMiddleware(g, roles)
 
-	g.GET("/profiles/:target/rating", func(ctx echo.Context) error {
+	g.GET("/profiles/:target", func(ctx echo.Context) error {
 		return vc.GetRating(ctx)
 	})
 
@@ -40,7 +42,7 @@ func (vc *VoteController) InitRoutes(g *echo.Group) {
 		return vc.Vote(ctx)
 	})
 
-	g.DELETE("/profiles/:target/vote/retract", func(ctx echo.Context) error {
+	g.DELETE("/profiles/:target/retract", func(ctx echo.Context) error {
 		return vc.RetractVote(ctx)
 	})
 }
