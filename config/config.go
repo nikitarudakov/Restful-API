@@ -11,7 +11,14 @@ type Database struct {
 	Name        string `json:"name"`
 	UserRepo    string `mapstructure:"user_repo_name"`
 	ProfileRepo string `mapstructure:"profile_repo_name"`
+	VoteRepo    string `mapstructure:"ratings_repo_name"`
 	URL         string `json:"url"`
+}
+
+type Cache struct {
+	Server   string `json:"server"`
+	Password string `json:"password"`
+	Port     string `json:"PORT"`
 }
 
 type Admin struct {
@@ -27,19 +34,25 @@ type Logger struct {
 	LoggingLevel int8 `json:"logging_level"`
 }
 
+type Auth struct {
+	SecretKey string `mapstructure:"secret_key"`
+}
+
 // Config Create private data struct to hold config options.
 type Config struct {
 	Database Database `mapstructure:"db"`
 	Admin    Admin    `mapstructure:"admin_api"`
+	Auth     Auth     `mapstructure:"auth"`
+	Cache    Cache    `mapstructure:"cache"`
 	Server   Server   `mapstructure:"server"`
 	Logger   Logger   `mapstructure:"logger"`
 }
 
 // InitConfig parses .json file to Config struct
-func InitConfig() (*Config, error) {
+func InitConfig(configName string) (*Config, error) {
 	config := &Config{}
 
-	viper.SetConfigName(".config")
+	viper.SetConfigName(configName)
 	viper.SetConfigType("json")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("..")

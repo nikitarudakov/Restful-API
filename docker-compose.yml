@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  cache:
+    image: redis:7.2.3
+    restart: always
+    hostname: redis
+    ports:
+      - '6379:6379'
+    command: "redis-server"
+    volumes:
+      - cache:/data
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+
+  db:
+    image: "mongo"
+
+volumes:
+  cache:
+    driver: local

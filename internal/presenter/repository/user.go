@@ -4,13 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/domain/model"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type UserRepository struct {
 	db *mongo.Collection
+}
+
+type UserRepoManager interface {
+	Find(u *model.User) (*model.User, error)
+	Create(u *model.User) (*InsertResult, error)
+	Delete(authUsername string) error
+	UpdateUsername(newUser *model.User, oldVal string) error
+	UpdatePassword(newUser *model.User) error
 }
 
 // NewUserRepository implicitly links repository.UserRepository to userRepository
@@ -31,7 +40,7 @@ func (ur *UserRepository) Find(u *model.User) (*model.User, error) {
 	return u, nil
 }
 
-func (ur *UserRepository) Create(u *model.User) (interface{}, error) {
+func (ur *UserRepository) Create(u *model.User) (*InsertResult, error) {
 	_, err := ur.Find(u)
 	if err == nil {
 		return nil, errors.New("user with such username already exists")
@@ -39,10 +48,30 @@ func (ur *UserRepository) Create(u *model.User) (interface{}, error) {
 
 	result, err := ur.db.InsertOne(context.TODO(), u)
 	if err != nil {
-		return nil, fmt.Errorf("error updating/inserting user data: %w", err)
+		return nil, fmt.Errorf("error inserting user data: %w", err)
 	}
 
-	return result.InsertedID, nil
+	insertedID, ok := result.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return nil, errors.New("conversion error")
+	}
+
+	return &InsertResult{Id: insertedID, Username: u.Username}, nil
+}
+
+func (ur *UserRepository) Delete(authUsername string) error {
+	filter := bson.M{"username": authUsername}
+
+	result, err := ur.db.DeleteOne(context.TODO(), filter)
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount < 1 {
+		return errors.New("user couldn't be deleted as it was not found in db")
+	}
+
+	return nil
 }
 
 func (ur *UserRepository) UpdateUsername(newUser *model.User, oldVal string) error {
@@ -51,9 +80,13 @@ func (ur *UserRepository) UpdateUsername(newUser *model.User, oldVal string) err
 		"username": newUser.Username,
 	}}
 
-	_, err := ur.db.UpdateOne(context.TODO(), filter, update)
+	result, err := ur.db.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
+	}
+
+	if result.ModifiedCount < 1 {
+		return errors.New("user data was not updated")
 	}
 
 	return nil
@@ -65,9 +98,13 @@ func (ur *UserRepository) UpdatePassword(u *model.User) error {
 		"password": u.Password,
 	}}
 
-	_, err := ur.db.UpdateOne(context.TODO(), filter, update)
+	result, err := ur.db.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
+	}
+
+	if result.ModifiedCount < 1 {
+		return errors.New("user data was not updated")
 	}
 
 	return nil
