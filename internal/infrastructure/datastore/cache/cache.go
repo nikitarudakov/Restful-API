@@ -15,7 +15,7 @@ type Database struct {
 func NewCacheDatabase(cfg *config.Cache) (*Database, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.Server + ":" + cfg.Port,
-		Password: "",
+		Password: cfg.Password,
 		DB:       0,
 	})
 

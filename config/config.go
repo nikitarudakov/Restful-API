@@ -16,8 +16,9 @@ type Database struct {
 }
 
 type Cache struct {
-	Server string `json:"server"`
-	Port   string `json:"PORT"`
+	Server   string `json:"server"`
+	Password string `json:"password"`
+	Port     string `json:"PORT"`
 }
 
 type Admin struct {
