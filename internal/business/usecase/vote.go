@@ -9,11 +9,12 @@ import (
 )
 
 type VoteUsecase struct {
-	pr repository.ProfileRepoManager
-	vr repository.VoteRepoManager
+	pr repository.ProfileRepoController
+	vr repository.VoteRepoController
 }
 
-func NewVoteUsecase(pr repository.ProfileRepoManager, vr repository.VoteRepoManager) *VoteUsecase {
+func NewVoteUsecase(pr repository.ProfileRepoController,
+	vr repository.VoteRepoController) *VoteUsecase {
 	return &VoteUsecase{pr: pr, vr: vr}
 }
 

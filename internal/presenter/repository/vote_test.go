@@ -4,7 +4,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -20,9 +19,7 @@ func GetVoteRepository() *VoteRepository {
 		panic(err)
 	}
 
-	cacheDB, err := cache.NewCacheDatabase(&cfg.Cache)
-
-	return NewVoteRepository(db.Collection(cfg.Database.VoteRepo), cacheDB)
+	return NewVoteRepository(db.Collection(cfg.Database.VoteRepo))
 }
 
 func TestVoteRepository_CalcTotalRating(t *testing.T) {

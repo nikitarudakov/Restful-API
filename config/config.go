@@ -16,8 +16,10 @@ type Database struct {
 }
 
 type Cache struct {
-	Server string `json:"server"`
-	Port   string `json:"PORT"`
+	Server         string `json:"server"`
+	ExpirationQuan string `mapstructure:"expiration_quantifier"`
+	ExpirationUnit string `mapstructure:"expiration_unit"`
+	Port           string `json:"PORT"`
 }
 
 type Admin struct {

@@ -50,10 +50,11 @@ func GetVoteController() *VoteController {
 
 	r := registry.NewRegistry(db, &cfg.Database, cacheDB)
 
-	uu := usecase.NewUserUsecase(r.Ur, r.Pr)
+	uu := usecase.NewUserUsecase(r.Ur)
+	pu := usecase.NewProfileUseCase(r.Pr)
 	vu := usecase.NewVoteUsecase(r.Pr, r.Vr)
 
-	ac := NewAuthController(uu, cfg)
+	ac := NewAuthController(uu, pu, cfg)
 
 	voteController := NewVoteController(vu, ac)
 

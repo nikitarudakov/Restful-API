@@ -11,99 +11,102 @@ import (
 )
 
 type UserRepository struct {
-	db *mongo.Collection
+	userRepo *mongo.Collection
 }
 
-type UserRepoManager interface {
-	Find(u *model.User) (*model.User, error)
-	Create(u *model.User) (*InsertResult, error)
-	Delete(authUsername string) error
-	UpdateUsername(newUser *model.User, oldVal string) error
-	UpdatePassword(newUser *model.User) error
+type UserRepoController interface {
+	FindUserInStorage(username string) (*model.User, error)
+	InsertUserToStorage(user *model.User) (*InsertResult, error)
+	DeleteUserFromStorage(username string) error
+	UpdateUsernameInStorage(userWithNewUsername *model.User, toReplaceUsername string) error
+	UpdatePasswordInStorage(u *model.User) error
 }
 
 // NewUserRepository implicitly links repository.UserRepository to userRepository
 // which uses mongo.Client as a database
-func NewUserRepository(db *mongo.Collection) *UserRepository {
-	return &UserRepository{db: db}
+func NewUserRepository(userRepo *mongo.Collection) *UserRepository {
+	return &UserRepository{userRepo: userRepo}
 }
 
-func (ur *UserRepository) Find(u *model.User) (*model.User, error) {
-	filter := bson.M{"username": u.Username}
+func (ur *UserRepository) FindUserInStorage(username string) (*model.User, error) {
+	var user model.User
 
-	result := ur.db.FindOne(context.TODO(), filter)
+	keyValue := bson.M{"username": username}
 
-	if err := result.Decode(u); err != nil {
+	searchResult := ur.userRepo.FindOne(context.TODO(), keyValue)
+
+	if err := searchResult.Decode(&user); err != nil {
 		return nil, err
 	}
 
-	return u, nil
+	return &user, nil
 }
 
-func (ur *UserRepository) Create(u *model.User) (*InsertResult, error) {
-	_, err := ur.Find(u)
+func (ur *UserRepository) InsertUserToStorage(user *model.User) (*InsertResult, error) {
+	_, err := ur.FindUserInStorage(user.Username)
 	if err == nil {
 		return nil, errors.New("user with such username already exists")
 	}
 
-	result, err := ur.db.InsertOne(context.TODO(), u)
+	insertResult, err := ur.userRepo.InsertOne(context.TODO(), user)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting user data: %w", err)
 	}
 
-	insertedID, ok := result.InsertedID.(primitive.ObjectID)
+	insertedID, ok := insertResult.InsertedID.(primitive.ObjectID)
 	if !ok {
 		return nil, errors.New("conversion error")
 	}
 
-	return &InsertResult{Id: insertedID, Username: u.Username}, nil
+	return &InsertResult{Id: insertedID, Username: user.Username}, nil
 }
 
-func (ur *UserRepository) Delete(authUsername string) error {
-	filter := bson.M{"username": authUsername}
+func (ur *UserRepository) DeleteUserFromStorage(username string) error {
+	keyValue := bson.M{"username": username}
 
-	result, err := ur.db.DeleteOne(context.TODO(), filter)
+	deleteResult, err := ur.userRepo.DeleteOne(context.TODO(), keyValue)
 	if err != nil {
 		return err
 	}
 
-	if result.DeletedCount < 1 {
+	if deleteResult.DeletedCount < 1 {
 		return errors.New("user couldn't be deleted as it was not found in db")
 	}
 
 	return nil
 }
 
-func (ur *UserRepository) UpdateUsername(newUser *model.User, oldVal string) error {
-	filter := bson.M{"username": oldVal}
-	update := bson.M{"$set": bson.M{
-		"username": newUser.Username,
+func (ur *UserRepository) UpdateUsernameInStorage(userWithNewUsername *model.User,
+	toReplaceUsername string) error {
+	keyValue := bson.M{"username": toReplaceUsername}
+	updateUserObject := bson.M{"$set": bson.M{
+		"username": userWithNewUsername.Username,
 	}}
 
-	result, err := ur.db.UpdateOne(context.TODO(), filter, update)
+	updateResult, err := ur.userRepo.UpdateOne(context.TODO(), keyValue, updateUserObject)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
 	}
 
-	if result.ModifiedCount < 1 {
+	if updateResult.ModifiedCount < 1 {
 		return errors.New("user data was not updated")
 	}
 
 	return nil
 }
 
-func (ur *UserRepository) UpdatePassword(u *model.User) error {
-	filter := bson.M{"username": u.Username}
-	update := bson.M{"$set": bson.M{
-		"password": u.Password,
+func (ur *UserRepository) UpdatePasswordInStorage(user *model.User) error {
+	keyValue := bson.M{"username": user.Username}
+	updateUserObject := bson.M{"$set": bson.M{
+		"password": user.Password,
 	}}
 
-	result, err := ur.db.UpdateOne(context.TODO(), filter, update)
+	updateResult, err := ur.userRepo.UpdateOne(context.TODO(), keyValue, updateUserObject)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
 	}
 
-	if result.ModifiedCount < 1 {
+	if updateResult.ModifiedCount < 1 {
 		return errors.New("user data was not updated")
 	}
 

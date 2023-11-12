@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -17,62 +16,63 @@ import (
 const objPerPage = 5
 
 type ProfileRepository struct {
-	db    *mongo.Collection
-	cache *cache.Database
+	profileCollection *mongo.Collection
 }
 
-type ProfileRepoManager interface {
-	Create(p *model.Profile) (*InsertResult, error)
-	Find(p *model.Profile) (*model.Profile, error)
-	Update(p *model.Update, authUsername string) error
-	Delete(authUsername string) error
-	ListUserProfiles(page int64) ([]model.Profile, error)
+type ProfileRepoController interface {
+	FindProfileInStorage(profileName string) (*model.Profile, error)
+	InsertProfileToStorage(profile *model.Profile) (*InsertResult, error)
+	DeleteProfileFromStorage(profileName string) error
+	UpdateProfileInStorage(profile *model.Update, profileName string) error
+	ListProfilesFromStorage(page int64) ([]model.Profile, error)
 }
 
 // NewProfileRepository implicitly links repository.ProfileRepository to profileRepository
-func NewProfileRepository(db *mongo.Collection, cache *cache.Database) *ProfileRepository {
-	return &ProfileRepository{db: db, cache: cache}
+func NewProfileRepository(profileCollection *mongo.Collection) *ProfileRepository {
+	return &ProfileRepository{profileCollection: profileCollection}
 }
 
-func (pr *ProfileRepository) Find(p *model.Profile) (*model.Profile, error) {
-	filter := bson.M{"nickname": p.Nickname}
+func (pr *ProfileRepository) FindProfileInStorage(profileName string) (*model.Profile, error) {
+	var profile model.Profile
 
-	result := pr.db.FindOne(context.TODO(), filter)
+	keyValue := bson.M{"nickname": profileName}
 
-	if err := result.Decode(p); err != nil {
+	searchResult := pr.profileCollection.FindOne(context.TODO(), keyValue)
+
+	if err := searchResult.Decode(&profile); err != nil {
 		return nil, err
 	}
 
-	return p, nil
+	return &profile, nil
 }
 
-func (pr *ProfileRepository) Create(p *model.Profile) (*InsertResult, error) {
-	_, err := pr.Find(p)
+func (pr *ProfileRepository) InsertProfileToStorage(profile *model.Profile) (*InsertResult, error) {
+	_, err := pr.FindProfileInStorage(profile.Nickname)
 	if err == nil {
 		return nil, errors.New("profile with such nickname already exists")
 	}
 
 	now := time.Now().Unix()
-	p.CreatedAt = &now
-	p.UpdatedAt = &now
+	profile.CreatedAt = &now
+	profile.UpdatedAt = &now
 
-	result, err := pr.db.InsertOne(context.TODO(), p)
+	insertResult, err := pr.profileCollection.InsertOne(context.TODO(), profile)
 	if err != nil {
 		return nil, fmt.Errorf("error updating/inserting user data: %w", err)
 	}
 
-	insertedID, ok := result.InsertedID.(primitive.ObjectID)
+	insertedID, ok := insertResult.InsertedID.(primitive.ObjectID)
 	if !ok {
 		return nil, errors.New("conversion error")
 	}
 
-	return &InsertResult{Id: insertedID, Username: p.Nickname}, nil
+	return &InsertResult{Id: insertedID, Username: profile.Nickname}, nil
 }
 
-func (pr *ProfileRepository) Delete(authUsername string) error {
-	filter := bson.M{"nickname": authUsername}
+func (pr *ProfileRepository) DeleteProfileFromStorage(profileName string) error {
+	keyValue := bson.M{"nickname": profileName}
 
-	deleteResult, err := pr.db.DeleteOne(context.TODO(), filter)
+	deleteResult, err := pr.profileCollection.DeleteOne(context.TODO(), keyValue)
 	if err != nil {
 		return err
 	}
@@ -84,56 +84,46 @@ func (pr *ProfileRepository) Delete(authUsername string) error {
 	return nil
 }
 
-func (pr *ProfileRepository) Update(modelUpdate *model.Update, authUsername string) error {
-	filter := bson.M{"nickname": authUsername}
+func (pr *ProfileRepository) UpdateProfileInStorage(modelUpdate *model.Update, profileName string) error {
+	keyValue := bson.M{"nickname": profileName}
 
-	update := GenerateUpdateObject(*modelUpdate, "bson")
+	updateProfileObject := generateUpdateObject(*modelUpdate, "bson")
 
-	result, err := pr.db.UpdateOne(context.TODO(), filter, update)
+	updateResult, err := pr.profileCollection.UpdateOne(context.TODO(), keyValue, updateProfileObject)
 	if err != nil {
 		return fmt.Errorf("error updating/inserting user data: %w", err)
 	}
 
-	if result.MatchedCount == 0 {
+	if updateResult.MatchedCount == 0 {
 		return errors.New("there is no profile to update")
 	}
 
 	log.Trace().
 		Str("service", "update profile").
-		Str("doc", fmt.Sprintf("%+v", update)).
+		Str("doc", fmt.Sprintf("%+v", updateProfileObject)).
 		Send()
 
 	return nil
 }
 
-// ListUserProfiles find all user profiles and sets pagination based on
+// ListProfilesFromStorage find all user profiles and sets pagination based on
 // provided page of type int64. Pagination is implemented with
 // methods options.Find().SetLimit() and options.Find().SetSkip()
-func (pr *ProfileRepository) ListUserProfiles(page int64) ([]model.Profile, error) {
-	var results []model.Profile
+func (pr *ProfileRepository) ListProfilesFromStorage(page int64) ([]model.Profile, error) {
+	var profiles []model.Profile
 
-	opts := options.Find().SetLimit(objPerPage * page).SetSkip(objPerPage * (page - 1))
+	keyValue := bson.M{} // no specific key value
 
-	log.Info().Msg("HERE 1")
+	searchOptions := options.Find().SetLimit(objPerPage * page).SetSkip(objPerPage * (page - 1))
 
-	if err := pr.cache.GetCache("profiles", &results); err == nil {
-		return results, nil
-	}
-
-	log.Info().Msg("HERE 2")
-
-	cursor, err := pr.db.Find(context.TODO(), bson.M{}, opts)
+	cursor, err := pr.profileCollection.Find(context.TODO(), keyValue, searchOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = cursor.All(context.TODO(), &results); err != nil {
+	if err = cursor.All(context.TODO(), &profiles); err != nil {
 		return nil, err
 	}
 
-	if err = pr.cache.SetCache("profiles", &results); err != nil {
-		log.Warn().Str("service", "rating caching").Err(err).Send()
-	}
-
-	return results, nil
+	return profiles, nil
 }

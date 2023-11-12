@@ -18,7 +18,7 @@ type VoteInsertResult struct {
 	Vote *model.Vote
 }
 
-func GenerateUpdateObject(update model.Update, tagAlias string) bson.M {
+func generateUpdateObject(update model.Update, tagAlias string) bson.M {
 	var fields = make(map[string]interface{})
 	filter := bson.M{"$set": fields}
 

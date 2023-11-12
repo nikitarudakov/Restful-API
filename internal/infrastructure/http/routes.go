@@ -33,22 +33,23 @@ func InitRoutesWithControllers(cfg *config.Config) *echo.Echo {
 		Validator: validator.New(validator.WithRequiredStructEnabled()),
 	}
 
-	r := registry.NewRegistry(db, &cfg.Database, cacheDB)
+	r := registry.NewRegistry(db, &cfg.Database)
 
-	uu := usecase.NewUserUsecase(r.Ur, r.Pr)
+	uu := usecase.NewUserUsecase(r.Ur)
+	pu := usecase.NewProfileUseCase(r.Pr)
 	vu := usecase.NewVoteUsecase(r.Pr, r.Vr)
 
-	authController := controller.NewAuthController(uu, cfg)
-	authController.InitRoutes(e)
+	authController := controller.NewAuthController(uu, pu, cfg)
+	authController.InitAuthRoutes(e)
 
 	voteController := controller.NewVoteController(vu, authController)
-	voteController.InitRoutes(e)
+	voteController.InitVoteRoutes(e, cacheDB, cfg)
 
-	userController := controller.NewUserController(uu, authController)
-	userController.InitRoutes(e)
+	userController := controller.NewUserController(uu, pu, authController)
+	userController.InitUserRoutes(e)
 
-	adminController := controller.NewAdminController(r.Ur, r.Pr, &cfg.Admin, userController, authController)
-	adminController.InitRoutes(e)
+	adminController := controller.NewAdminController(userController, authController, &cfg.Admin)
+	adminController.InitAdminRoutes(e, cacheDB, cfg)
 
 	return e
 }

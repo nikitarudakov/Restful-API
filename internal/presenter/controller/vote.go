@@ -3,8 +3,10 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/appErrors/repoerr"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -27,22 +29,25 @@ type VoteManager interface {
 	GetRating(target string) (*model.Rating, error)
 }
 
-func (vc *VoteController) InitRoutes(e *echo.Echo) {
+func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cacheDB *cache.Database, cfg *config.Config) {
 	roles := []string{"admin", "moderator", "user"}
 
-	g := e.Group("/rating")
+	ratings := e.Group("/ratings")
 
-	vc.InitAuthMiddleware(g, roles)
+	var rating model.Rating
+	ratings.Use(cache.Middleware(cacheDB, "rating", &rating, &cfg.Cache))
 
-	g.GET("/profiles/:target", func(ctx echo.Context) error {
+	vc.InitAuthMiddleware(ratings, roles)
+
+	ratings.GET("/profiles/:target", func(ctx echo.Context) error {
 		return vc.GetRating(ctx)
 	})
 
-	g.PUT("/profiles/:target/vote", func(ctx echo.Context) error {
+	ratings.PUT("/profiles/:target/vote", func(ctx echo.Context) error {
 		return vc.Vote(ctx)
 	})
 
-	g.DELETE("/profiles/:target/retract", func(ctx echo.Context) error {
+	ratings.DELETE("/profiles/:target/retract", func(ctx echo.Context) error {
 		return vc.RetractVote(ctx)
 	})
 }
@@ -87,6 +92,8 @@ func (vc *VoteController) GetRating(ctx echo.Context) error {
 
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+
+	ctx.Set("rating", rating)
 
 	return ctx.JSON(http.StatusOK, rating)
 }
