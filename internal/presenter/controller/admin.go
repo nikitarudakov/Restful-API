@@ -24,8 +24,8 @@ func (ac *AdminController) InitAdminRoutes(e *echo.Echo, cacheDB *cache.Database
 
 	roles := []string{"admin", "moderator"}
 
-	var profiles []model.Rating
-	admin.Use(cache.Middleware(cacheDB, "rating", &profiles, &cfg.Cache))
+	var profiles []model.Profile
+	admin.Use(cache.Middleware(cacheDB, &profiles, &cfg.Cache))
 
 	ac.InitAuthMiddleware(admin, roles)
 

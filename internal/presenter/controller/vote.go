@@ -35,7 +35,7 @@ func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cacheDB *cache.Database, 
 	ratings := e.Group("/ratings")
 
 	var rating model.Rating
-	ratings.Use(cache.Middleware(cacheDB, "rating", &rating, &cfg.Cache))
+	ratings.Use(cache.Middleware(cacheDB, &rating, &cfg.Cache))
 
 	vc.InitAuthMiddleware(ratings, roles)
 
@@ -93,7 +93,8 @@ func (vc *VoteController) GetRating(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	ctx.Set("rating", rating)
+	cacheKey := ctx.Request().Method + ":" + ctx.Request().RequestURI
+	ctx.Set(cacheKey, rating)
 
 	return ctx.JSON(http.StatusOK, rating)
 }

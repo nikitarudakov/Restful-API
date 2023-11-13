@@ -1,11 +1,12 @@
 package cache
 
 import (
+	"context"
 	"encoding/json"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/timeparse"
-	"github.com/go-redis/redis"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"time"
@@ -22,7 +23,7 @@ func NewCacheDatabase(cfg *config.Cache) (*Database, error) {
 		DB:       0,
 	})
 
-	if err := client.Ping().Err(); err != nil {
+	if err := client.Ping(context.Background()).Err(); err != nil {
 		return nil, err
 	}
 
@@ -31,11 +32,12 @@ func NewCacheDatabase(cfg *config.Cache) (*Database, error) {
 	return &Database{c: client}, nil
 }
 
-func Middleware(db *Database, key string, dest interface{}, cacheCfg *config.Cache) echo.MiddlewareFunc {
+func Middleware(db *Database, dest interface{}, cacheCfg *config.Cache) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
 			expiration, err := timeparse.ParseExpirationTime(cacheCfg.ExpirationQuan,
 				cacheCfg.ExpirationUnit)
+
 			if err != nil {
 				log.Error().Err(err).
 					Msg("Cache middleware can't be set up because of invalid expiration time (default: 1 min.")
@@ -46,18 +48,21 @@ func Middleware(db *Database, key string, dest interface{}, cacheCfg *config.Cac
 				return nil
 			}
 
-			if err := db.GetCache(key, dest); err == nil {
+			// Create a unique cache key based on method and URI
+			cacheKey := ctx.Request().Method + ":" + ctx.Request().RequestURI
+
+			if err = db.GetCache(cacheKey, dest); err == nil {
 				return ctx.JSON(200, dest)
 			} else {
 				log.Warn().Err(err).Msg("cache was not retrieved")
 			}
 
-			if err := next(ctx); err != nil {
+			if err = next(ctx); err != nil {
 				return err
 			}
 
-			value := ctx.Get(key)
-			if err := db.SetCache("rating", value, expiration); err != nil {
+			value := ctx.Get(cacheKey)
+			if err = db.SetCache(cacheKey, value, expiration); err != nil {
 				log.Warn().Str("service", "rating caching").Err(err).Send()
 			}
 
@@ -71,11 +76,11 @@ func (db *Database) SetCache(key string, value interface{}, expiration time.Dura
 	if err != nil {
 		return err
 	}
-	return db.c.Set(key, v, expiration).Err()
+	return db.c.Set(context.Background(), key, v, expiration).Err()
 }
 
 func (db *Database) GetCache(key string, dest interface{}) error {
-	v, err := db.c.Get(key).Result()
+	v, err := db.c.Get(context.Background(), key).Result()
 	if err != nil {
 		return err
 	}

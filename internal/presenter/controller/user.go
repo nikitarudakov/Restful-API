@@ -79,12 +79,15 @@ func (uc *UserController) ListProfiles(ctx echo.Context) error {
 		page = parsedPage
 	}
 
-	result, err := uc.profileUseCase.ListProfiles(page)
+	profiles, err := uc.profileUseCase.ListProfiles(page)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return ctx.JSON(http.StatusOK, result)
+	cacheKey := ctx.Request().Method + ":" + ctx.Request().RequestURI
+	ctx.Set(cacheKey, profiles)
+
+	return ctx.JSON(http.StatusOK, profiles)
 }
 
 // UpdateUserAndProfile checks authentication, parses request data (params) to model.Profile
