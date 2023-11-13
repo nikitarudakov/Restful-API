@@ -4,7 +4,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"github.com/stretchr/testify/assert"
@@ -23,12 +22,7 @@ func GetVoteUsecase() *VoteUsecase {
 		panic(err)
 	}
 
-	cacheDB, err := cache.NewCacheDatabase(&cfg.Cache)
-	if err != nil {
-		panic(err)
-	}
-
-	r := registry.NewRegistry(db, &cfg.Database, cacheDB)
+	r := registry.NewRegistry(db, &cfg.Database)
 
 	return NewVoteUsecase(r.Pr, r.Vr)
 }

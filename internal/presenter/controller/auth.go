@@ -9,7 +9,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
-	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -45,11 +44,6 @@ func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {
 	regRouter.PUT("/password/update", func(ctx echo.Context) error {
 		return ac.UpdatePassword(ctx)
 	})
-}
-
-func (ac *AuthController) InitAuthMiddleware(g *echo.Group, accessibleRoles []string) {
-	tokenConfig := auth.GetTokenConfig(&ac.cfg.Auth, accessibleRoles)
-	g.Use(echojwt.WithConfig(tokenConfig))
 }
 
 func (ac *AuthController) UpdatePassword(ctx echo.Context) error {
@@ -98,6 +92,7 @@ func (ac *AuthController) Login(ctx echo.Context) error {
 	}
 
 	ctx.Set("username", u.Username)
+	ctx.Set("role", u.Role)
 
 	return ctx.JSON(http.StatusOK, echo.Map{
 		"token":    token,

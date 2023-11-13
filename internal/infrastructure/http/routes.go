@@ -42,14 +42,11 @@ func InitRoutesWithControllers(cfg *config.Config) *echo.Echo {
 	authController := controller.NewAuthController(uu, pu, cfg)
 	authController.InitAuthRoutes(e)
 
-	voteController := controller.NewVoteController(vu, authController)
+	voteController := controller.NewVoteController(vu)
 	voteController.InitVoteRoutes(e, cacheDB, cfg)
 
-	userController := controller.NewUserController(uu, pu, authController)
-	userController.InitUserRoutes(e)
-
-	adminController := controller.NewAdminController(userController, authController, &cfg.Admin)
-	adminController.InitAdminRoutes(e, cacheDB, cfg)
+	userController := controller.NewUserController(uu, pu)
+	userController.InitUserRoutes(e, cacheDB, cfg)
 
 	return e
 }

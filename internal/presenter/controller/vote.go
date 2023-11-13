@@ -6,6 +6,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/appErrors/repoerr"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
 	"github.com/labstack/echo/v4"
@@ -16,11 +17,10 @@ import (
 
 type VoteController struct {
 	voteUsecase VoteManager
-	AuthEndpointHandler
 }
 
-func NewVoteController(vc VoteManager, ac AuthEndpointHandler) *VoteController {
-	return &VoteController{vc, ac}
+func NewVoteController(vc VoteManager) *VoteController {
+	return &VoteController{vc}
 }
 
 type VoteManager interface {
@@ -37,7 +37,7 @@ func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cacheDB *cache.Database, 
 	var rating model.Rating
 	ratings.Use(cache.Middleware(cacheDB, &rating, &cfg.Cache))
 
-	vc.InitAuthMiddleware(ratings, roles)
+	auth.InitAuthMiddleware(ratings, &cfg.Auth, roles)
 
 	ratings.GET("/profiles/:target", func(ctx echo.Context) error {
 		return vc.GetRating(ctx)
