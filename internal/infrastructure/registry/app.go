@@ -2,7 +2,7 @@ package registry
 
 import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

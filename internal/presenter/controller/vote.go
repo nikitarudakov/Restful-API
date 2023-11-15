@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/appErrors/repoerr"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"strconv"
 	"time"
@@ -85,6 +86,8 @@ func (vc *VoteController) GetRating(ctx echo.Context) error {
 
 	rating, err := vc.voteUsecase.GetRating(target)
 	if err != nil {
+		log.Info().Msg("here")
+
 		var calcRatingUserError *repoerr.CalcRatingUserError
 		if errors.As(err, &calcRatingUserError) {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())

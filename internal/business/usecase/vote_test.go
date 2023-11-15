@@ -5,7 +5,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"

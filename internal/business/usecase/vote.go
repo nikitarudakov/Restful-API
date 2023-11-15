@@ -3,7 +3,7 @@ package usecase
 import (
 	"errors"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/rs/zerolog/log"
 	"time"
 )
