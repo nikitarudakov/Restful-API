@@ -1,69 +1,128 @@
 package controller
 
 import (
+	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"net/http"
+	"strconv"
 )
 
 type UserController struct {
-	userUsecase UserManager
-	voteHandler VoteEndpointsHandler
-	AuthEndpointHandler
+	userUseCase    UserManager
+	profileUseCase ProfileManager
 }
 
 // UserManager contains methods for performing operations on User/Profile datatype
 type UserManager interface {
 	CreateUser(u *model.User) (*repository.InsertResult, error)
-	CreateProfile(p *model.Profile) (*repository.InsertResult, error)
-	Find(u *model.User) (*model.User, error)
+	FindUser(u *model.User) (*model.User, error)
 	UpdateUsername(newUsername, oldUsername string) error
 	UpdatePassword(u *model.User) error
-	UpdateProfile(p *model.Update, authUsername string) error
+	DeleteUser(username string) error
+}
+
+// ProfileManager contains methods for performing operations on User/Profile datatype
+type ProfileManager interface {
+	CreateProfile(p *model.Profile) (*repository.InsertResult, error)
+	UpdateProfile(p *model.Update, profileName string) error
+	DeleteProfile(profileName string) error
+	ListProfiles(page int64) ([]model.Profile, error)
 }
 
 // NewUserController implicitly links  *UserController to userController
 // Here to instantiate userController we provide usecase.UserManager
-func NewUserController(um UserManager, vh VoteEndpointsHandler, ac AuthEndpointHandler) *UserController {
-	return &UserController{um, vh, ac}
+func NewUserController(um UserManager, pm ProfileManager) *UserController {
+	return &UserController{um, pm}
 }
 
-func (uc *UserController) InitRoutes(e *echo.Echo) {
+func (uc *UserController) InitUserRoutes(e *echo.Echo, cacheDB *cache.Database, cfg *config.Config) {
 	userRouter := e.Group("/users")
+	userRoles := []string{"admin", "user", "moderator"}
 
-	roles := []string{"admin", "user", "moderator"}
-
-	uc.InitAuthMiddleware(userRouter, roles)
-
-	userRouter.PUT("/password/update", func(ctx echo.Context) error {
-		return uc.UpdatePassword(ctx)
-	})
+	auth.InitAuthMiddleware(userRouter, &cfg.Auth, userRoles)
 
 	userRouter.PUT("/profiles/:username/update", func(ctx echo.Context) error {
-		return uc.UpdateUserProfile(ctx)
+		return uc.UpdateUserAndProfile(ctx)
 	})
 
-	uc.voteHandler.InitRoutes(userRouter)
+	adminRouter := userRouter.Group("/admin")
+	adminRoles := []string{"admin", "moderator"}
+
+	auth.InitAuthMiddleware(adminRouter, &cfg.Auth, adminRoles)
+
+	var profiles []model.Profile
+	adminRouter.Use(cache.Middleware(cacheDB, &profiles, &cfg.Cache))
+
+	adminRouter.GET("/profiles/list", func(ctx echo.Context) error {
+		return uc.ListProfiles(ctx)
+	})
+
+	adminRouter.DELETE("/profiles/:username/delete", func(ctx echo.Context) error {
+		return uc.DeleteUserAndProfile(ctx)
+	})
 }
 
-// UpdateUserProfile checks authentication, parses request data (params) to model.Profile
-// and updates model.Profile in DB
-func (uc *UserController) UpdateUserProfile(ctx echo.Context) error {
+func (uc *UserController) DeleteUserAndProfile(ctx echo.Context) error {
 	username := ctx.Param("username")
 
-	update, err := uc.parseUserProfileUpdate(ctx, username)
+	err := uc.profileUseCase.DeleteProfile(username)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return err
 	}
 
-	err = uc.userUsecase.UpdateProfile(update, username)
+	err = uc.userUseCase.DeleteUser(username)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (uc *UserController) ListProfiles(ctx echo.Context) error {
+	var page int64 = 1
+
+	pageStr := ctx.QueryParam("page")
+	if pageStr != "" {
+		parsedPage, err := strconv.ParseInt(ctx.QueryParam("page"), 10, 64)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		page = parsedPage
+	}
+
+	profiles, err := uc.profileUseCase.ListProfiles(page)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	err = uc.userUsecase.UpdateUsername(update.Nickname, username)
+	cacheKey := ctx.Request().Method + ":" + ctx.Request().RequestURI
+	ctx.Set(cacheKey, profiles)
+
+	return ctx.JSON(http.StatusOK, profiles)
+}
+
+// UpdateUserAndProfile checks authentication, parses request data (params) to model.Profile
+// and updates model.Profile in DB
+func (uc *UserController) UpdateUserAndProfile(ctx echo.Context) error {
+	username := ctx.Param("username")
+
+	update, err := uc.parseUserAndProfileUpdate(ctx, username)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	err = uc.profileUseCase.UpdateProfile(update, username)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	err = uc.userUseCase.UpdateUsername(update.Nickname, username)
 	if err != nil {
 		log.Error().Err(err).
 			Str("old_username", username).
@@ -75,7 +134,7 @@ func (uc *UserController) UpdateUserProfile(ctx echo.Context) error {
 }
 
 // ParseUserProfileFromServerRequest parses server request data to model.Profile
-func (uc *UserController) parseUserProfileUpdate(
+func (uc *UserController) parseUserAndProfileUpdate(
 	ctx echo.Context,
 	username string) (*model.Update, error) {
 

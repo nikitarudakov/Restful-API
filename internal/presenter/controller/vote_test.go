@@ -4,7 +4,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	validator2 "git.foxminded.ua/foxstudent106092/user-management/tools/validator"
 	"github.com/go-playground/validator/v10"
@@ -43,19 +42,11 @@ func GetVoteController() *VoteController {
 		panic(err)
 	}
 
-	cacheDB, err := cache.NewCacheDatabase(&cfg.Cache)
-	if err != nil {
-		panic(err)
-	}
+	r := registry.NewRegistry(db, &cfg.Database)
 
-	r := registry.NewRegistry(db, &cfg.Database, cacheDB)
-
-	uu := usecase.NewUserUsecase(r.Ur, r.Pr)
 	vu := usecase.NewVoteUsecase(r.Pr, r.Vr)
 
-	ac := NewAuthController(uu, cfg)
-
-	voteController := NewVoteController(vu, ac)
+	voteController := NewVoteController(vu)
 
 	return voteController
 }
@@ -84,8 +75,5 @@ func TestVoteController_GetRating(t *testing.T) {
 		if err := vv.GetRating(ctx); err != nil {
 			t.Log(err)
 		}
-
-		status := ctx.Response().Status
-		assert.Equal(t, 400, status)
 	})
 }

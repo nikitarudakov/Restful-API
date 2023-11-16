@@ -3,10 +3,14 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/appErrors/repoerr"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,11 +18,10 @@ import (
 
 type VoteController struct {
 	voteUsecase VoteManager
-	AuthEndpointHandler
 }
 
-func NewVoteController(vc VoteManager, ac AuthEndpointHandler) *VoteController {
-	return &VoteController{vc, ac}
+func NewVoteController(vc VoteManager) *VoteController {
+	return &VoteController{vc}
 }
 
 type VoteManager interface {
@@ -27,20 +30,25 @@ type VoteManager interface {
 	GetRating(target string) (*model.Rating, error)
 }
 
-func (vc *VoteController) InitRoutes(g *echo.Group) {
+func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cacheDB *cache.Database, cfg *config.Config) {
 	roles := []string{"admin", "moderator", "user"}
 
-	vc.InitAuthMiddleware(g, roles)
+	ratings := e.Group("/ratings")
 
-	g.GET("/profiles/:target/rating", func(ctx echo.Context) error {
+	var rating model.Rating
+	ratings.Use(cache.Middleware(cacheDB, &rating, &cfg.Cache))
+
+	auth.InitAuthMiddleware(ratings, &cfg.Auth, roles)
+
+	ratings.GET("/profiles/:target", func(ctx echo.Context) error {
 		return vc.GetRating(ctx)
 	})
 
-	g.PUT("/profiles/:target/vote", func(ctx echo.Context) error {
+	ratings.PUT("/profiles/:target/vote", func(ctx echo.Context) error {
 		return vc.Vote(ctx)
 	})
 
-	g.DELETE("/profiles/:target/vote/retract", func(ctx echo.Context) error {
+	ratings.DELETE("/profiles/:target/retract", func(ctx echo.Context) error {
 		return vc.RetractVote(ctx)
 	})
 }
@@ -78,6 +86,8 @@ func (vc *VoteController) GetRating(ctx echo.Context) error {
 
 	rating, err := vc.voteUsecase.GetRating(target)
 	if err != nil {
+		log.Info().Msg("here")
+
 		var calcRatingUserError *repoerr.CalcRatingUserError
 		if errors.As(err, &calcRatingUserError) {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -85,6 +95,9 @@ func (vc *VoteController) GetRating(ctx echo.Context) error {
 
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+
+	cacheKey := ctx.Request().Method + ":" + ctx.Request().RequestURI
+	ctx.Set(cacheKey, rating)
 
 	return ctx.JSON(http.StatusOK, rating)
 }

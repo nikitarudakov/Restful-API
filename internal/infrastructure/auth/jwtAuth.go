@@ -64,6 +64,12 @@ func GetParseTokenFunc(cfgAuth *config.Auth, accessibleRoles []string) func(ctx 
 		claimsUsername := claimsMap["name"].(string)
 		claimsRole := claimsMap["role"].(string)
 
+		requestTarget := ctx.Param("username")
+
+		if claimsRole != "admin" && requestTarget != "" && requestTarget != claimsUsername {
+			return nil, errors.New("no access to this source")
+		}
+
 		if !slices.Contains(accessibleRoles, claimsRole) {
 			return nil, errors.New("no access to this source")
 		}
@@ -75,7 +81,7 @@ func GetParseTokenFunc(cfgAuth *config.Auth, accessibleRoles []string) func(ctx 
 	}
 }
 
-func GetTokenConfig(cfgAuth *config.Auth, accessibleRoles []string) echojwt.Config {
+func getTokenConfig(cfgAuth *config.Auth, accessibleRoles []string) echojwt.Config {
 	tokenConfig := echojwt.Config{
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
 			return new(UsersWithRoleJwtClaims)

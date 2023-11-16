@@ -5,28 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	repoerr "git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/appErrors/repoerr"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
-	"github.com/rs/zerolog/log"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type VoteRepository struct {
-	db    *mongo.Collection
-	cache *cache.Database
+	db *mongo.Collection
 }
 
-type VoteRepoManager interface {
+type VoteRepoController interface {
 	Find(v *model.Vote, isTarget bool, isSender bool) (*model.Vote, error)
 	Create(v *model.Vote) (*VoteInsertResult, error)
 	Delete(v *model.Vote, isTarget bool, isSender bool) error
 	GetRating(target string) (*model.Rating, error)
 }
 
-func NewVoteRepository(db *mongo.Collection, cache *cache.Database) *VoteRepository {
-	return &VoteRepository{db: db, cache: cache}
+func NewVoteRepository(db *mongo.Collection) *VoteRepository {
+	return &VoteRepository{db: db}
 }
 
 func getFilterForVote(v *model.Vote, isTarget bool, isSender bool) map[string]interface{} {
@@ -86,11 +83,6 @@ func (vr *VoteRepository) Delete(v *model.Vote, isTarget bool, isSender bool) er
 }
 
 func (vr *VoteRepository) GetRating(target string) (*model.Rating, error) {
-	var rating model.Rating
-	if err := vr.cache.GetCache("rating", &rating); err == nil {
-		return &rating, nil
-	}
-
 	pipeline := bson.A{
 		bson.D{{"$match", bson.D{{"target", target}}}},
 		bson.D{{"$group", bson.D{
@@ -109,10 +101,6 @@ func (vr *VoteRepository) GetRating(target string) (*model.Rating, error) {
 	}
 
 	if len(results) > 0 {
-		if err = vr.cache.SetCache("rating", results[0]); err != nil {
-			log.Warn().Str("service", "rating caching").Err(err).Send()
-		}
-
 		return &results[0], nil
 	}
 

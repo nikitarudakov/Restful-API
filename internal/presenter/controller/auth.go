@@ -7,17 +7,17 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
-	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"net/http"
 )
 
 type AuthController struct {
-	userUsecase UserManager
-	cfg         *config.Config
+	userUseCase    UserManager
+	profileUseCase ProfileManager
+	cfg            *config.Config
 }
 
 type AuthResult struct {
@@ -25,11 +25,12 @@ type AuthResult struct {
 	Profile *repository.InsertResult
 }
 
-func NewAuthController(uu UserManager, cfg *config.Config) *AuthController {
-	return &AuthController{userUsecase: uu, cfg: cfg}
+func NewAuthController(userUseCase UserManager,
+	profileUseCase ProfileManager, cfg *config.Config) *AuthController {
+	return &AuthController{userUseCase: userUseCase, profileUseCase: profileUseCase, cfg: cfg}
 }
 
-func (ac *AuthController) InitRoutes(e *echo.Echo) {
+func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {
 	regRouter := e.Group("/auth")
 
 	regRouter.POST("/register", func(ctx echo.Context) error {
@@ -39,11 +40,10 @@ func (ac *AuthController) InitRoutes(e *echo.Echo) {
 	regRouter.POST("/login", func(ctx echo.Context) error {
 		return ac.Login(ctx)
 	})
-}
 
-func (ac *AuthController) InitAuthMiddleware(g *echo.Group, accessibleRoles []string) {
-	tokenConfig := auth.GetTokenConfig(&ac.cfg.Auth, accessibleRoles)
-	g.Use(echojwt.WithConfig(tokenConfig))
+	regRouter.PUT("/password/update", func(ctx echo.Context) error {
+		return ac.UpdatePassword(ctx)
+	})
 }
 
 func (ac *AuthController) UpdatePassword(ctx echo.Context) error {
@@ -57,7 +57,7 @@ func (ac *AuthController) UpdatePassword(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	if err = ac.userUsecase.UpdatePassword(&u); err != nil {
+	if err = ac.userUseCase.UpdatePassword(&u); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
@@ -70,7 +70,7 @@ func (ac *AuthController) Login(ctx echo.Context) error {
 	u.Username = ctx.FormValue("username")
 	password := ctx.FormValue("password")
 
-	userFromDB, err := ac.userUsecase.Find(&u)
+	userFromDB, err := ac.userUseCase.FindUser(&u)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusForbidden,
 			fmt.Sprintf("user was not found: %s", err.Error()))
@@ -92,6 +92,7 @@ func (ac *AuthController) Login(ctx echo.Context) error {
 	}
 
 	ctx.Set("username", u.Username)
+	ctx.Set("role", u.Role)
 
 	return ctx.JSON(http.StatusOK, echo.Map{
 		"token":    token,
@@ -144,7 +145,7 @@ func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*reposit
 	}
 	u.Password = hashedPassword
 
-	result, err := ac.userUsecase.CreateUser(&u)
+	result, err := ac.userUseCase.CreateUser(&u)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +161,7 @@ func (ac *AuthController) registerProfile(ctx echo.Context) (*repository.InsertR
 		return nil, err
 	}
 
-	result, err := ac.userUsecase.CreateProfile(p)
+	result, err := ac.profileUseCase.CreateProfile(p)
 	if err != nil {
 		return nil, err
 	}

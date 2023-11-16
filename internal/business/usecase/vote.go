@@ -3,17 +3,18 @@ package usecase
 import (
 	"errors"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/repository"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/rs/zerolog/log"
 	"time"
 )
 
 type VoteUsecase struct {
-	pr repository.ProfileRepoManager
-	vr repository.VoteRepoManager
+	pr repository.ProfileRepoController
+	vr repository.VoteRepoController
 }
 
-func NewVoteUsecase(pr repository.ProfileRepoManager, vr repository.VoteRepoManager) *VoteUsecase {
+func NewVoteUsecase(pr repository.ProfileRepoController,
+	vr repository.VoteRepoController) *VoteUsecase {
 	return &VoteUsecase{pr: pr, vr: vr}
 }
 
