@@ -7,6 +7,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
@@ -25,9 +26,8 @@ type AuthResult struct {
 	Profile *repository.InsertResult
 }
 
-func NewAuthController(userUseCase UserManager,
-	profileUseCase ProfileManager, cfg *config.Config) *AuthController {
-	return &AuthController{userUseCase: userUseCase, profileUseCase: profileUseCase, cfg: cfg}
+func NewAuthController(r *registry.Registry, cfg *config.Config) *AuthController {
+	return &AuthController{userUseCase: r.Uu, profileUseCase: r.Pu, cfg: cfg}
 }
 
 func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {

@@ -5,6 +5,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -15,6 +16,7 @@ import (
 type UserController struct {
 	userUseCase    UserManager
 	profileUseCase ProfileManager
+	cacheDb        *cache.Database
 }
 
 // UserManager contains methods for performing operations on User/Profile datatype
@@ -36,11 +38,11 @@ type ProfileManager interface {
 
 // NewUserController implicitly links  *UserController to userController
 // Here to instantiate userController we provide usecase.UserManager
-func NewUserController(um UserManager, pm ProfileManager) *UserController {
-	return &UserController{um, pm}
+func NewUserController(r *registry.Registry) *UserController {
+	return &UserController{r.Uu, r.Pu, r.CacheDB}
 }
 
-func (uc *UserController) InitUserRoutes(e *echo.Echo, cacheDB *cache.Database, cfg *config.Config) {
+func (uc *UserController) InitUserRoutes(e *echo.Echo, cfg *config.Config) {
 	userRouter := e.Group("/users")
 	userRoles := []string{"admin", "user", "moderator"}
 
@@ -56,7 +58,7 @@ func (uc *UserController) InitUserRoutes(e *echo.Echo, cacheDB *cache.Database, 
 	auth.InitAuthMiddleware(adminRouter, &cfg.Auth, adminRoles)
 
 	var profiles []model.Profile
-	adminRouter.Use(cache.Middleware(cacheDB, &profiles, &cfg.Cache))
+	adminRouter.Use(cache.Middleware(uc.cacheDb, &profiles, &cfg.Cache))
 
 	adminRouter.GET("/profiles/list", func(ctx echo.Context) error {
 		return uc.ListProfiles(ctx)

@@ -7,6 +7,7 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"github.com/labstack/echo/v4"
@@ -18,10 +19,11 @@ import (
 
 type VoteController struct {
 	voteUsecase VoteManager
+	cacheDB     *cache.Database
 }
 
-func NewVoteController(vc VoteManager) *VoteController {
-	return &VoteController{vc}
+func NewVoteController(r *registry.Registry) *VoteController {
+	return &VoteController{r.Vu, r.CacheDB}
 }
 
 type VoteManager interface {
@@ -30,13 +32,13 @@ type VoteManager interface {
 	GetRating(target string) (*model.Rating, error)
 }
 
-func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cacheDB *cache.Database, cfg *config.Config) {
+func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cfg *config.Config) {
 	roles := []string{"admin", "moderator", "user"}
 
 	ratings := e.Group("/ratings")
 
 	var rating model.Rating
-	ratings.Use(cache.Middleware(cacheDB, &rating, &cfg.Cache))
+	ratings.Use(cache.Middleware(vc.cacheDB, &rating, &cfg.Cache))
 
 	auth.InitAuthMiddleware(ratings, &cfg.Auth, roles)
 
