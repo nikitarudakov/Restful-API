@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package profile;
+
+option go_package = "/profile";
+
+message ProfileName {
+  string name = 1;
+}
+
+message ProfileObj {
+  string nickname = 1;
+  string firstName = 2;
+  string lastName = 3;
+  optional int64 createdAt = 4;
+  optional int64 updatedAt = 5;
+  optional int64 deletedAt = 6;
+}
+
+
+message ProfileUpdate {
+  optional string name = 1;
+  optional string nickname = 2;
+  optional string firstName = 3;
+  optional string lastName = 4;
+  optional int64 updatedAt = 5;
+}
+
+service ProfileRepo {
+  rpc FindProfileInStorage(ProfileName) returns (ProfileObj) {}
+  rpc InsertProfileToStorage(ProfileObj) returns (ProfileObj) {}
+  rpc DeleteProfileFromStorage(ProfileName) returns (ProfileObj) {}
+  rpc UpdateProfileInStorage(ProfileUpdate) returns (ProfileObj) {}
+  rpc ListProfilesFromStorage(ProfileName) returns (ProfileObj) {}
+}
