@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package userDao;
+
+option go_package = "/userDao";
+
+message Username {
+  string val = 1;
+}
+
+message User {
+  string username = 1;
+  string password = 2;
+  string role = 3;
+}
+
+message UserReplace {
+  User user = 1;
+  Username toUpdateUserWithUsername = 2;
+}
+
+message InsertResult {
+  bytes objectID = 1;
+  string username = 2;
+}
+
+message Empty {}
+
+service UserRepo {
+  rpc FindUserInStorage(Username) returns (User) {}
+  rpc InsertUserToStorage(User) returns (InsertResult) {}
+  rpc DeleteUserFromStorage(Username) returns (Empty) {}
+  rpc UpdateUsernameInStorage(UserReplace) returns (Empty) {}
+  rpc UpdatePasswordInStorage(User) returns (Empty) {}
+}
