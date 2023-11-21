@@ -45,7 +45,9 @@ func Middleware(db *Database, dest interface{}, cacheCfg *config.Cache) echo.Mid
 			}
 
 			if ctx.Request().Method != http.MethodGet {
-				return nil
+				if err := next(ctx); err != nil {
+					return err
+				}
 			}
 
 			// Create a unique cache key based on method and URI
