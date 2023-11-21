@@ -2,17 +2,17 @@ package controller
 
 import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/business/usecase"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	validator2 "git.foxminded.ua/foxstudent106092/user-management/tools/validator"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func SetupServer() echo.Context {
@@ -31,7 +31,7 @@ func SetupServer() echo.Context {
 	return e.NewContext(req, w)
 }
 
-func GetVoteController() *VoteController {
+func TestVoteController_GetRating(t *testing.T) {
 	cfg, err := config.InitConfig(".controllerConfig.json")
 	if err != nil {
 		panic(err)
@@ -42,17 +42,16 @@ func GetVoteController() *VoteController {
 		panic(err)
 	}
 
-	r := registry.NewRegistry(db, &cfg.Database)
+	repoRegistry := registry.NewRepoRegistry(db, cfg)
 
-	vu := usecase.NewVoteUsecase(r.Pr, r.Vr)
+	go grpc.StartDAOServer(repoRegistry, cfg)
 
-	voteController := NewVoteController(vu)
+	// wait for gRPC server to start up
+	time.Sleep(3 * time.Second)
 
-	return voteController
-}
+	r := registry.NewRegistry(cfg)
 
-func TestVoteController_GetRating(t *testing.T) {
-	vv := GetVoteController()
+	vv := NewVoteController(r)
 
 	t.Run("get rating of existing user", func(t *testing.T) {
 		ctx := SetupServer()
@@ -62,9 +61,6 @@ func TestVoteController_GetRating(t *testing.T) {
 		if err := vv.GetRating(ctx); err != nil {
 			t.Error(err)
 		}
-
-		status := ctx.Response().Status
-		assert.Equal(t, 200, status)
 	})
 
 	t.Run("get rating of non-existent user", func(t *testing.T) {

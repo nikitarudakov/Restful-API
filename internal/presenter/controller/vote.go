@@ -7,11 +7,10 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/voteDao"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"strconv"
 	"time"
@@ -23,11 +22,11 @@ type VoteController struct {
 }
 
 func NewVoteController(r *registry.Registry) *VoteController {
-	return &VoteController{r.Vu, r.CacheDB}
+	return &VoteController{r.VoteUseCase, r.CacheDB}
 }
 
 type VoteManager interface {
-	StoreVote(v *model.Vote) (*repository.VoteInsertResult, error)
+	StoreVote(v *model.Vote) (*voteDao.InsertResult, error)
 	RetractVote(u *model.Update, sender string) error
 	GetRating(target string) (*model.Rating, error)
 }
@@ -88,8 +87,6 @@ func (vc *VoteController) GetRating(ctx echo.Context) error {
 
 	rating, err := vc.voteUsecase.GetRating(target)
 	if err != nil {
-		log.Info().Msg("here")
-
 		var calcRatingUserError *repoerr.CalcRatingUserError
 		if errors.As(err, &calcRatingUserError) {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -123,7 +120,7 @@ func (vc *VoteController) parseUserVote(ctx echo.Context) (*model.Vote, error) {
 	voteObj := model.Vote{
 		Sender:  sender,
 		Target:  target,
-		Vote:    vote,
+		Vote:    int32(vote),
 		VotedAt: now,
 	}
 
