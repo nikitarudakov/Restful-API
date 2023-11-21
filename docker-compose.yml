@@ -4,20 +4,48 @@ services:
     image: redis:7.2.3
     restart: always
     hostname: redis
+    networks:
+      - user_network
     ports:
       - '6379:6379'
     command: "redis-server"
     volumes:
       - cache:/data
 
+  dao:
+    container_name: "dao"
+    networks:
+      - user_network
+    build:
+      context: .
+      dockerfile: ./dao.Dockerfile
+    ports:
+      - "9000:9000"
+
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: ./app.Dockerfile
+    networks:
+      - user_network
+    depends_on:
+      - dao
     ports:
       - "8080:8080"
 
   db:
     image: "mongo"
+    networks:
+      - user_network
+    volumes:
+      - db:/data
+
+networks:
+  user_network:
+    name: "user_management"
 
 volumes:
   cache:
+    driver: local
+  db:
     driver: local
