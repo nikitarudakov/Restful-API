@@ -7,8 +7,8 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/voteDao"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -26,7 +26,7 @@ func NewVoteController(r *registry.Registry) *VoteController {
 }
 
 type VoteManager interface {
-	StoreVote(v *model.Vote) (*voteDao.InsertResult, error)
+	StoreVote(v *model.Vote) (*repository.VoteInsertResult, error)
 	RetractVote(u *model.Update, sender string) error
 	GetRating(target string) (*model.Rating, error)
 }

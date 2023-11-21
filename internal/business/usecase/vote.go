@@ -1,29 +1,26 @@
 package usecase
 
 import (
-	"context"
 	"errors"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/voteDao"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/rs/zerolog/log"
 	"time"
 )
 
 type VoteUsecase struct {
-	grpcClient voteDao.VoteRepoClient
+	pr repository.ProfileRepoController
+	vr repository.VoteRepoController
 }
 
-func NewVoteUsecase(client voteDao.VoteRepoClient) *VoteUsecase {
-	return &VoteUsecase{grpcClient: client}
+func NewVoteUsecase(pr repository.ProfileRepoController,
+	vr repository.VoteRepoController) *VoteUsecase {
+	return &VoteUsecase{pr: pr, vr: vr}
 }
 
 func (vc *VoteUsecase) GetRating(target string) (*model.Rating, error) {
-	gRPCRating, err := vc.grpcClient.GetRating(context.Background(), &voteDao.Target{Val: target})
-	if err != nil {
-		return nil, err
-	}
-
-	return voteDao.UnmarshalToRating(gRPCRating), err
+	rating, err := vc.vr.GetRating(target)
+	return rating, err
 }
 
 func (vc *VoteUsecase) RetractVote(u *model.Update, sender string) error {
@@ -32,23 +29,18 @@ func (vc *VoteUsecase) RetractVote(u *model.Update, sender string) error {
 		Target: u.Nickname,
 	}
 
-	gRPCVoteFilter := voteDao.MarshalTogRPCVoteFilter(vote, true, true)
-
-	_, err := vc.grpcClient.FindVoteInStorage(context.Background(), gRPCVoteFilter)
+	vote, err := vc.vr.Find(vote, true, true)
 	if err != nil {
 		return errors.New("no vote has been recorded")
 	}
 
-	_, err = vc.grpcClient.DeleteVoteFromStorage(context.Background(), gRPCVoteFilter)
-	return err
+	return vc.vr.Delete(vote, true, true)
 }
 
-func (vc *VoteUsecase) StoreVote(v *model.Vote) (*voteDao.InsertResult, error) {
-	gRPCVoteFilter := voteDao.MarshalTogRPCVoteFilter(v, true, true)
-
-	lastStoredVote, err := vc.grpcClient.FindVoteInStorage(context.Background(), gRPCVoteFilter)
+func (vc *VoteUsecase) StoreVote(v *model.Vote) (*repository.VoteInsertResult, error) {
+	lastStoredVote, err := vc.vr.Find(v, true, true)
 	if err != nil {
-		log.Warn().Str("service", "FindVoteInStorage").Err(err).Send()
+		log.Warn().Str("service", "last stored vote").Err(err).Send()
 	}
 
 	if lastStoredVote != nil {
@@ -61,14 +53,11 @@ func (vc *VoteUsecase) StoreVote(v *model.Vote) (*voteDao.InsertResult, error) {
 		}
 	}
 
-	gRPCVote := voteDao.MarshalTogRPCVote(v)
-
-	insertResult, err := vc.grpcClient.InsertVoteToStorage(context.Background(), gRPCVote)
-
-	return insertResult, err
+	result, err := vc.vr.Create(v)
+	return result, err
 }
 
-func validateTimespanBetweenVotes(newVote *model.Vote, lastVote *voteDao.Vote) error {
+func validateTimespanBetweenVotes(newVote *model.Vote, lastVote *model.Vote) error {
 	timeOfNewVote := time.Unix(newVote.VotedAt, 0)
 	timeOfLastVote := time.Unix(lastVote.VotedAt, 0)
 

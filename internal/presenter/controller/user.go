@@ -5,9 +5,8 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/profileDao"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/userDao"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -22,7 +21,7 @@ type UserController struct {
 
 // UserManager contains methods for performing operations on User/Profile datatype
 type UserManager interface {
-	CreateUser(u *model.User) (*userDao.InsertResult, error)
+	CreateUser(u *model.User) (*repository.InsertResult, error)
 	FindUser(u *model.User) (*model.User, error)
 	UpdateUsername(newUsername, oldUsername string) error
 	UpdatePassword(u *model.User) error
@@ -31,7 +30,7 @@ type UserManager interface {
 
 // ProfileManager contains methods for performing operations on User/Profile datatype
 type ProfileManager interface {
-	CreateProfile(p *model.Profile) (*profileDao.InsertResult, error)
+	CreateProfile(p *model.Profile) (*repository.InsertResult, error)
 	UpdateProfile(p *model.Update, profileName string) error
 	DeleteProfile(profileName string) error
 	ListProfiles(page int64) ([]*model.Profile, error)

@@ -3,18 +3,14 @@ package controller
 import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
-	grpcDao "git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	validator2 "git.foxminded.ua/foxstudent106092/user-management/tools/validator"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
 func SetupServer() echo.Context {
@@ -44,21 +40,7 @@ func TestVoteController_GetRating(t *testing.T) {
 		t.Error(err)
 	}
 
-	conn, err := grpc.Dial(cfg.Dao.Server+":"+cfg.Dao.Port,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	repoRegistry := registry.NewRepoRegistry(db, cfg)
-
-	go grpcDao.StartDAOServer(repoRegistry, cfg)
-
-	// wait for gRPC server to start up
-	time.Sleep(3 * time.Second)
-
-	r := registry.NewRegistry(conn, cfg)
+	r := registry.NewRegistry(db, cfg)
 
 	vv := NewVoteController(r)
 

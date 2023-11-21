@@ -1,41 +1,30 @@
 package usecase
 
 import (
-	"context"
+	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/voteDao"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"google.golang.org/grpc"
 	"testing"
 	"time"
 )
 
-type VoteRepoMock struct {
-	mock.Mock
-}
-
-func (s *VoteRepoMock) FindVoteInStorage(ctx context.Context, in *voteDao.VoteFilter, opts ...grpc.CallOption) (*voteDao.Vote, error) {
-	return &voteDao.Vote{Sender: "Test-sender"}, nil
-}
-
-func (s *VoteRepoMock) InsertVoteToStorage(ctx context.Context, in *voteDao.Vote, opts ...grpc.CallOption) (*voteDao.InsertResult, error) {
-	return &voteDao.InsertResult{ObjectID: []byte("test-id")}, nil
-}
-
-func (s *VoteRepoMock) DeleteVoteFromStorage(ctx context.Context, in *voteDao.VoteFilter, opts ...grpc.CallOption) (*voteDao.Empty, error) {
-	return &voteDao.Empty{}, nil
-}
-
-func (s *VoteRepoMock) GetRating(ctx context.Context, in *voteDao.Target, opts ...grpc.CallOption) (*voteDao.Rating, error) {
-	return &voteDao.Rating{Target: "Test-target", Rating: 15}, nil
-}
-
 func GetVoteUsecase() *VoteUsecase {
-	voteClient := &VoteRepoMock{}
+	cfg, err := config.InitConfig(".usecaseConfig.json")
+	if err != nil {
+		panic(err)
+	}
 
-	return NewVoteUsecase(voteClient)
+	db, err := datastore.NewDB(&cfg.Database)
+	if err != nil {
+		panic(err)
+	}
+
+	r := registry.NewRegistry(db, cfg)
+
+	return NewVoteUsecase(r.ProfileRepo, r.VoteRepo)
 }
 
 func TestUserUsecase_RetractVote(t *testing.T) {
@@ -50,6 +39,14 @@ func TestUserUsecase_RetractVote(t *testing.T) {
 		t.Log(err)
 
 		assert.Nil(t, err)
+	})
+
+	t.Run("try retract vote of user 1 from user 2 twice", func(t *testing.T) {
+		err := uu.RetractVote(update, sender)
+
+		t.Log(err)
+
+		assert.Error(t, err)
 	})
 }
 
@@ -72,5 +69,37 @@ func TestUserUsecase_StoreVote(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.IsType(t, &repository.VoteInsertResult{}, result)
+	})
+
+	vote2 := &model.Vote{
+		Sender:  "user1",
+		Target:  "user2",
+		Vote:    1,
+		VotedAt: now,
+	}
+
+	t.Run("try store vote twice", func(t *testing.T) {
+		result, err := uu.StoreVote(vote2)
+
+		t.Log(err)
+
+		assert.ErrorContains(t, err, "twice is not allowed")
+		assert.Nil(t, result)
+	})
+
+	vote3 := &model.Vote{
+		Sender:  "user1",
+		Target:  "user2",
+		Vote:    -1,
+		VotedAt: now,
+	}
+
+	t.Run("try store vote again within 1 hour timespan", func(t *testing.T) {
+		result, err := uu.StoreVote(vote3)
+
+		t.Log(err)
+
+		assert.ErrorContains(t, err, "only once per hour")
+		assert.Nil(t, result)
 	})
 }

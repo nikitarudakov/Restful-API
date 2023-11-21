@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/voteDao"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -16,11 +15,18 @@ type VoteRepository struct {
 	db *mongo.Collection
 }
 
+type VoteRepoController interface {
+	Find(v *model.Vote, isTarget bool, isSender bool) (*model.Vote, error)
+	Create(v *model.Vote) (*VoteInsertResult, error)
+	Delete(v *model.Vote, isTarget bool, isSender bool) error
+	GetRating(target string) (*model.Rating, error)
+}
+
 func NewVoteRepository(db *mongo.Collection) *VoteRepository {
 	return &VoteRepository{db: db}
 }
 
-func getFilterForVote(v *voteDao.Vote, isTarget bool, isSender bool) map[string]interface{} {
+func getFilterForVote(v *model.Vote, isTarget bool, isSender bool) map[string]interface{} {
 	var filter = make(map[string]interface{})
 
 	if isTarget {
@@ -33,9 +39,7 @@ func getFilterForVote(v *voteDao.Vote, isTarget bool, isSender bool) map[string]
 	return filter
 }
 
-func (vr *VoteRepository) FindVoteInStorage(v *voteDao.Vote,
-	isTarget bool, isSender bool) (*model.Vote, error) {
-
+func (vr *VoteRepository) Find(v *model.Vote, isTarget bool, isSender bool) (*model.Vote, error) {
 	var vFromDB = &model.Vote{}
 
 	filter := getFilterForVote(v, isTarget, isSender)
@@ -49,7 +53,7 @@ func (vr *VoteRepository) FindVoteInStorage(v *voteDao.Vote,
 	return vFromDB, nil
 }
 
-func (vr *VoteRepository) InsertVoteToStorage(v *voteDao.Vote) (*model.InsertResult, error) {
+func (vr *VoteRepository) Create(v *model.Vote) (*VoteInsertResult, error) {
 	result, err := vr.db.InsertOne(context.TODO(), v)
 	if err != nil {
 		return nil, fmt.Errorf("error updating/inserting vote data: %w", err)
@@ -60,10 +64,10 @@ func (vr *VoteRepository) InsertVoteToStorage(v *voteDao.Vote) (*model.InsertRes
 		return nil, errors.New("conversion error")
 	}
 
-	return &model.InsertResult{Id: insertedID, Username: ""}, nil
+	return &VoteInsertResult{Id: insertedID, Vote: v}, nil
 }
 
-func (vr *VoteRepository) DeleteVoteFromStorage(v *voteDao.Vote, isTarget bool, isSender bool) error {
+func (vr *VoteRepository) Delete(v *model.Vote, isTarget bool, isSender bool) error {
 	filter := getFilterForVote(v, isTarget, isSender)
 
 	deleteResult, err := vr.db.DeleteOne(context.TODO(), filter)

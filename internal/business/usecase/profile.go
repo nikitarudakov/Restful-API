@@ -1,54 +1,34 @@
 package usecase
 
 import (
-	"context"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/profileDao"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 )
 
 type ProfileUseCase struct {
-	grpcClient profileDao.ProfileRepoClient
+	profileRepo repository.ProfileRepoController
 }
 
-func NewProfileUseCase(client profileDao.ProfileRepoClient) *ProfileUseCase {
-	return &ProfileUseCase{grpcClient: client}
+func NewProfileUseCase(profileRepo repository.ProfileRepoController) *ProfileUseCase {
+	return &ProfileUseCase{profileRepo: profileRepo}
 }
 
 // CreateProfile creates profile for model.User and stores it in DB with repository.ProfileRepository
-func (pu *ProfileUseCase) CreateProfile(p *model.Profile) (*profileDao.InsertResult, error) {
-	profileObj := profileDao.MarshalTogRPCProfileObj(p)
-
-	insertResult, err := pu.grpcClient.InsertProfileToStorage(context.Background(), profileObj)
-
-	return insertResult, err
+func (pu *ProfileUseCase) CreateProfile(p *model.Profile) (*repository.InsertResult, error) {
+	result, err := pu.profileRepo.InsertProfileToStorage(p)
+	return result, err
 }
 
 // UpdateProfile updates profile of model.User in DB with repository.ProfileRepository
 func (pu *ProfileUseCase) UpdateProfile(p *model.Update, profileName string) error {
-	profileUpdate := profileDao.MarshalTogRPCProfileUpdate(p)
-	profileUpdate.ProfileName = &profileDao.ProfileName{Name: profileName}
-
-	_, err := pu.grpcClient.UpdateProfileInStorage(context.Background(), profileUpdate)
-
-	return err
+	return pu.profileRepo.UpdateProfileInStorage(p, profileName)
 }
 
 func (pu *ProfileUseCase) DeleteProfile(profileName string) error {
-	_, err := pu.grpcClient.DeleteProfileFromStorage(context.Background(),
-		&profileDao.ProfileName{Name: profileName})
-
-	return err
+	return pu.profileRepo.DeleteProfileFromStorage(profileName)
 }
 
 func (pu *ProfileUseCase) ListProfiles(page int64) ([]*model.Profile, error) {
-	var profiles []*model.Profile
-
-	gRPCProfilesSlice, err := pu.grpcClient.ListProfilesFromStorage(context.Background(),
-		&profileDao.Page{Num: page})
-
-	for _, profile := range gRPCProfilesSlice.Profiles {
-		profiles = append(profiles, profileDao.UnmarshalTogRPCProfileObj(profile))
-	}
-
+	profiles, err := pu.profileRepo.ListProfilesFromStorage(page)
 	return profiles, err
 }
