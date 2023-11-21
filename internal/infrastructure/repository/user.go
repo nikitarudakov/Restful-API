@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/userDao"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,24 +15,16 @@ type UserRepository struct {
 	userRepo *mongo.Collection
 }
 
-type UserRepoController interface {
-	FindUserInStorage(username string) (*model.User, error)
-	InsertUserToStorage(user *model.User) (*InsertResult, error)
-	DeleteUserFromStorage(username string) error
-	UpdateUsernameInStorage(userWithNewUsername *model.User, toReplaceUsername string) error
-	UpdatePasswordInStorage(u *model.User) error
-}
-
 // NewUserRepository implicitly links repository.UserRepository to userRepository
 // which uses mongo.Client as a database
 func NewUserRepository(userRepo *mongo.Collection) *UserRepository {
 	return &UserRepository{userRepo: userRepo}
 }
 
-func (ur *UserRepository) FindUserInStorage(username string) (*model.User, error) {
+func (ur *UserRepository) FindUserInStorage(username *userDao.Username) (*model.User, error) {
 	var user model.User
 
-	keyValue := bson.M{"username": username}
+	keyValue := bson.M{"username": username.Val}
 
 	searchResult := ur.userRepo.FindOne(context.TODO(), keyValue)
 
@@ -42,8 +35,8 @@ func (ur *UserRepository) FindUserInStorage(username string) (*model.User, error
 	return &user, nil
 }
 
-func (ur *UserRepository) InsertUserToStorage(user *model.User) (*InsertResult, error) {
-	_, err := ur.FindUserInStorage(user.Username)
+func (ur *UserRepository) InsertUserToStorage(user *userDao.User) (*model.InsertResult, error) {
+	_, err := ur.FindUserInStorage(&userDao.Username{Val: user.Username})
 	if err == nil {
 		return nil, errors.New("user with such username already exists")
 	}
@@ -58,11 +51,11 @@ func (ur *UserRepository) InsertUserToStorage(user *model.User) (*InsertResult, 
 		return nil, errors.New("conversion error")
 	}
 
-	return &InsertResult{Id: insertedID, Username: user.Username}, nil
+	return &model.InsertResult{Id: insertedID, Username: user.Username}, nil
 }
 
-func (ur *UserRepository) DeleteUserFromStorage(username string) error {
-	keyValue := bson.M{"username": username}
+func (ur *UserRepository) DeleteUserFromStorage(username *userDao.Username) error {
+	keyValue := bson.M{"username": username.Val}
 
 	deleteResult, err := ur.userRepo.DeleteOne(context.TODO(), keyValue)
 	if err != nil {
@@ -76,9 +69,9 @@ func (ur *UserRepository) DeleteUserFromStorage(username string) error {
 	return nil
 }
 
-func (ur *UserRepository) UpdateUsernameInStorage(userWithNewUsername *model.User,
-	toReplaceUsername string) error {
-	keyValue := bson.M{"username": toReplaceUsername}
+func (ur *UserRepository) UpdateUsernameInStorage(userWithNewUsername *userDao.User,
+	toReplaceUsername *userDao.Username) error {
+	keyValue := bson.M{"username": toReplaceUsername.Val}
 	updateUserObject := bson.M{"$set": bson.M{
 		"username": userWithNewUsername.Username,
 	}}
@@ -95,7 +88,7 @@ func (ur *UserRepository) UpdateUsernameInStorage(userWithNewUsername *model.Use
 	return nil
 }
 
-func (ur *UserRepository) UpdatePasswordInStorage(user *model.User) error {
+func (ur *UserRepository) UpdatePasswordInStorage(user *userDao.User) error {
 	keyValue := bson.M{"username": user.Username}
 	updateUserObject := bson.M{"$set": bson.M{
 		"password": user.Password,
