@@ -2,7 +2,6 @@ package http
 
 import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/presenter/controller"
 	validator2 "git.foxminded.ua/foxstudent106092/user-management/tools/validator"
@@ -11,12 +10,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-func InitRoutesWithControllers(cfg *config.Config) *echo.Echo {
-	db, err := datastore.NewDB(&cfg.Database)
-	if err != nil {
-		panic(err)
-	}
-
+func InitRoutesWithControllers(r *registry.Registry, cfg *config.Config) *echo.Echo {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -24,8 +18,6 @@ func InitRoutesWithControllers(cfg *config.Config) *echo.Echo {
 	e.Validator = &validator2.CustomValidator{
 		Validator: validator.New(validator.WithRequiredStructEnabled()),
 	}
-
-	r := registry.NewRegistry(db, cfg)
 
 	authController := controller.NewAuthController(r, cfg)
 	authController.InitAuthRoutes(e)

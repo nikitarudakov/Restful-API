@@ -7,8 +7,9 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/profileDao"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc/userDao"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -22,12 +23,12 @@ type AuthController struct {
 }
 
 type AuthResult struct {
-	User    *repository.InsertResult
-	Profile *repository.InsertResult
+	User    *userDao.InsertResult
+	Profile *profileDao.InsertResult
 }
 
 func NewAuthController(r *registry.Registry, cfg *config.Config) *AuthController {
-	return &AuthController{userUseCase: r.Uu, profileUseCase: r.Pu, cfg: cfg}
+	return &AuthController{userUseCase: r.UserUseCase, profileUseCase: r.ProfileUseCase, cfg: cfg}
 }
 
 func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {
@@ -118,7 +119,7 @@ func (ac *AuthController) Register(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, AuthResult{User: userResult, Profile: profileResult})
 }
 
-func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*repository.InsertResult, error) {
+func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*userDao.InsertResult, error) {
 	u.Username = ctx.FormValue("username")
 	u.Password = ctx.FormValue("password")
 	u.Role = ctx.FormValue("role")
@@ -153,7 +154,7 @@ func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*reposit
 	return result, err
 }
 
-func (ac *AuthController) registerProfile(ctx echo.Context) (*repository.InsertResult, error) {
+func (ac *AuthController) registerProfile(ctx echo.Context) (*profileDao.InsertResult, error) {
 	username := ctx.FormValue("username")
 
 	p, err := ac.parseValidateUserProfileCreate(ctx, username)

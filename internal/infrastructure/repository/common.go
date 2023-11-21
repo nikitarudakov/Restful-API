@@ -8,11 +8,6 @@ import (
 	"time"
 )
 
-type InsertResult struct {
-	Id       primitive.ObjectID
-	Username string
-}
-
 type VoteInsertResult struct {
 	Id   primitive.ObjectID
 	Vote *model.Vote

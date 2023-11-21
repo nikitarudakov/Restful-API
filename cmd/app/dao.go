@@ -1,23 +1,27 @@
 package main
 
 import (
-	daoGRPC "git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc"
-	"github.com/rs/zerolog/log"
-	"net"
+	"git.foxminded.ua/foxstudent106092/user-management/config"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/grpc"
+	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
+	"git.foxminded.ua/foxstudent106092/user-management/logger"
 )
 
 func main() {
-	lis, err := net.Listen("tcp", ":9000")
+	cfg, err := config.InitConfig(".config")
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		panic(err)
 	}
 
-	daoServer, err := daoGRPC.NewProfileDAOServer()
+	logger.InitLogger(&cfg.Logger)
+
+	db, err := datastore.NewDB(&cfg.Database)
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		panic(err)
 	}
 
-	if err := daoServer.Serve(lis); err != nil {
-		log.Fatal().Err(err).Send()
-	}
+	r := registry.NewRepoRegistry(db, cfg)
+
+	grpc.StartDAOServer(r, cfg)
 }
