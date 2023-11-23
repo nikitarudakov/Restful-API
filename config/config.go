@@ -39,7 +39,7 @@ type Auth struct {
 	SecretKey string `mapstructure:"secret_key"`
 }
 
-type DAO struct {
+type Grpc struct {
 	Server string `json:"server"`
 	Port   string `json:"PORT"`
 }
@@ -50,7 +50,7 @@ type Config struct {
 	Admin    Admin    `mapstructure:"admin_api"`
 	Auth     Auth     `mapstructure:"auth"`
 	Cache    Cache    `mapstructure:"cache"`
-	Dao      DAO      `mapstructure:"dao"`
+	Grpc     Grpc     `mapstructure:"grpc"`
 	Server   Server   `mapstructure:"server"`
 	Logger   Logger   `mapstructure:"logger"`
 }

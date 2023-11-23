@@ -1,5 +1,15 @@
 version: '3.8'
 services:
+  grpcservice:
+    container_name: "grpcservice"
+    networks:
+      - user_network
+    build:
+      context: .
+      dockerfile: ./grpc.Dockerfile
+    ports:
+      - "9000:9000"
+
   cache:
     image: redis:7.2.3
     restart: always
@@ -12,16 +22,6 @@ services:
     volumes:
       - cache:/data
 
-  dao:
-    container_name: "dao"
-    networks:
-      - user_network
-    build:
-      context: .
-      dockerfile: ./dao.Dockerfile
-    ports:
-      - "9000:9000"
-
   app:
     build:
       context: .
@@ -29,7 +29,7 @@ services:
     networks:
       - user_network
     depends_on:
-      - dao
+      - grpcservice
     ports:
       - "8080:8080"
 

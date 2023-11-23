@@ -37,7 +37,6 @@ func NewRegistry(db *mongo.Database, cfg *config.Config) *Registry {
 	return &Registry{
 		uu, ur,
 		pu, pr,
-		vu, vr,
-		cacheDB,
+		vu, vr, cacheDB,
 	}
 }

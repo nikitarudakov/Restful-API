@@ -24,7 +24,7 @@ func ParseExpirationTime(quantifier string, unit string) (time.Duration, error) 
 	case "hour", "hours":
 		durationUnit = time.Hour
 	default:
-		return 0, fmt.Errorf("unsupported time unit: %s", unit)
+		return 1 * time.Minute, fmt.Errorf("unsupported time unit: %s", unit)
 	}
 
 	// Calculate the total duration.

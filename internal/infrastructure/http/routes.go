@@ -19,13 +19,13 @@ func InitRoutesWithControllers(r *registry.Registry, cfg *config.Config) *echo.E
 		Validator: validator.New(validator.WithRequiredStructEnabled()),
 	}
 
-	authController := controller.NewAuthController(r, cfg)
-	authController.InitAuthRoutes(e)
+	authController := controller.NewAuthController(r.UserUseCase, r.ProfileUseCase, cfg)
+	authController.InitAuthRoutes(e, cfg)
 
-	voteController := controller.NewVoteController(r)
+	voteController := controller.NewVoteController(r.VoteUseCase, r.CacheDB)
 	voteController.InitVoteRoutes(e, cfg)
 
-	userController := controller.NewUserController(r)
+	userController := controller.NewUserController(r.UserUseCase, r.ProfileUseCase, r.CacheDB)
 	userController.InitUserRoutes(e, cfg)
 
 	return e
