@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "/auth";
+
+message Empty {}
+
+message Credentials {
+  string username = 1;
+  string password = 2;
+}
+
+message Profile {
+  string nickname = 1 [json_name="nickname"];
+  string firstName = 2 [json_name="first_name"];
+  string lastName = 3 [json_name="last_name"];
+  optional int64 createdAt = 4 [json_name="created_at"];
+  optional int64 updatedAt = 5 [json_name="updated_at"];
+  optional int64 deletedAt = 6 [json_name="deleted_at"];
+}
+
+message Token {
+  string token = 1;
+}
+
+message RegisterUser {
+  Credentials credentials = 1;
+  string role = 2;
+  Profile profile = 3;
+}
+
+service AuthController {
+  rpc UpdatePassword(Credentials) returns(Empty) {}
+  rpc Login(Credentials) returns(Token) {}
+  rpc Register(RegisterUser) returns(Empty) {}
+}

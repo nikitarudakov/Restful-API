@@ -7,7 +7,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/config"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/tools/hashing"
 	"github.com/labstack/echo/v4"
@@ -26,11 +25,13 @@ type AuthResult struct {
 	Profile *repository.InsertResult
 }
 
-func NewAuthController(r *registry.Registry, cfg *config.Config) *AuthController {
-	return &AuthController{userUseCase: r.UserUseCase, profileUseCase: r.ProfileUseCase, cfg: cfg}
+func NewAuthController(userUseCase UserManager,
+	profileUseCase ProfileManager, cfg *config.Config) *AuthController {
+	return &AuthController{userUseCase: userUseCase,
+		profileUseCase: profileUseCase, cfg: cfg}
 }
 
-func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {
+func (ac *AuthController) InitAuthRoutes(e *echo.Echo, cfg *config.Config) {
 	regRouter := e.Group("/auth")
 
 	regRouter.POST("/register", func(ctx echo.Context) error {
@@ -41,7 +42,11 @@ func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {
 		return ac.Login(ctx)
 	})
 
-	regRouter.PUT("/password/update", func(ctx echo.Context) error {
+	restrictedAuthRouter := regRouter.Group("/users")
+	userRoles := []string{"user", "vote", "moderator"}
+	auth.InitAuthMiddleware(restrictedAuthRouter, &cfg.Auth, userRoles)
+
+	restrictedAuthRouter.PUT("/password/update", func(ctx echo.Context) error {
 		return ac.UpdatePassword(ctx)
 	})
 }
@@ -131,7 +136,7 @@ func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*reposit
 		return nil, err
 	}
 
-	if u.Role == "admin" {
+	if u.Role == "vote" {
 		if subtle.ConstantTimeCompare([]byte(u.Username), []byte(ac.cfg.Admin.Username)) != 1 ||
 			subtle.ConstantTimeCompare([]byte(u.Password), []byte(ac.cfg.Admin.Password)) != 1 {
 
