@@ -1,35 +1,46 @@
 syntax = "proto3";
 
-package userDao;
+package user;
 
-option go_package = "/userDao";
-
-message Username {
-  string val = 1;
-}
-
-message User {
-  string username = 1;
-  string password = 2;
-  string role = 3;
-}
-
-message UserReplace {
-  User user = 1;
-  Username toUpdateUserWithUsername = 2;
-}
-
-message InsertResult {
-  bytes objectID = 1;
-  string username = 2;
-}
+option go_package = "/user";
 
 message Empty {}
 
-service UserRepo {
-  rpc FindUserInStorage(Username) returns (User) {}
-  rpc InsertUserToStorage(User) returns (InsertResult) {}
-  rpc DeleteUserFromStorage(Username) returns (Empty) {}
-  rpc UpdateUsernameInStorage(UserReplace) returns (Empty) {}
-  rpc UpdatePasswordInStorage(User) returns (Empty) {}
+message Username {
+  string username = 1;
+}
+
+message Page {
+  int64 page = 1;
+}
+
+message Profile {
+  string nickname = 1 [json_name="nickname"];
+  string firstName = 2 [json_name="first_name"];
+  string lastName = 3 [json_name="last_name"];
+  optional int64 createdAt = 4 [json_name="created_at"];
+  optional int64 updatedAt = 5 [json_name="updated_at"];
+  optional int64 deletedAt = 6 [json_name="deleted_at"];
+}
+
+message Profiles {
+  repeated Profile profiles = 1;
+}
+
+message Update {
+  string nickname = 1 [json_name="nickname"];
+  string firstName = 2 [json_name="first_name"];
+  string lastName = 3 [json_name="last_name"];
+  optional int64 updatedAt = 4 [json_name="updated_at"];
+}
+
+message UpdateArg {
+  Update update = 1;
+  Username username = 2;
+}
+
+service UserController {
+  rpc DeleteUserAndProfile(Username) returns (Empty) {}
+  rpc ListProfiles(Page) returns (Profiles) {}
+  rpc UpdateUserAndProfile(UpdateArg) returns (Empty) {}
 }

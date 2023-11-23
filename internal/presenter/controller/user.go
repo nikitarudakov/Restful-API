@@ -5,7 +5,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -38,13 +37,15 @@ type ProfileManager interface {
 
 // NewUserController implicitly links  *UserController to userController
 // Here to instantiate userController we provide usecase.UserManager
-func NewUserController(r *registry.Registry) *UserController {
-	return &UserController{r.UserUseCase, r.ProfileUseCase, r.CacheDB}
+func NewUserController(userUseCase UserManager,
+	profileUseCase ProfileManager,
+	cacheDB *cache.Database) *UserController {
+	return &UserController{userUseCase, profileUseCase, cacheDB}
 }
 
 func (uc *UserController) InitUserRoutes(e *echo.Echo, cfg *config.Config) {
 	userRouter := e.Group("/users")
-	userRoles := []string{"admin", "user", "moderator"}
+	userRoles := []string{"vote", "user", "moderator"}
 
 	auth.InitAuthMiddleware(userRouter, &cfg.Auth, userRoles)
 
@@ -52,8 +53,8 @@ func (uc *UserController) InitUserRoutes(e *echo.Echo, cfg *config.Config) {
 		return uc.UpdateUserAndProfile(ctx)
 	})
 
-	adminRouter := userRouter.Group("/admin")
-	adminRoles := []string{"admin", "moderator"}
+	adminRouter := userRouter.Group("/vote")
+	adminRoles := []string{"vote", "moderator"}
 
 	auth.InitAuthMiddleware(adminRouter, &cfg.Auth, adminRoles)
 
