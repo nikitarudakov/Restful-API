@@ -1,13 +1,25 @@
 syntax = "proto3";
 
-package voteDao;
+package vote;
 
-option go_package = "/voteDao";
+option go_package = "/vote";
 
 message Empty {}
 
-message InsertResult {
-  bytes objectID = 1;
+message VoteArg {
+  string sender = 1;
+  string target = 2;
+  int32 vote = 3;
+  int64 votedAt = 4 [json_name="voted_at,omitempty"];
+}
+
+message RetractArg {
+  string target = 1;
+  string sender = 2;
+}
+
+message Target {
+  string target = 1;
 }
 
 message Rating {
@@ -15,26 +27,8 @@ message Rating {
   int32 rating = 2;
 }
 
-message Target {
-  string val = 1;
-}
-
-message Vote {
-  string sender = 1;
-  string target = 2;
-  int32 vote = 3;
-  int64 votedAt = 4 [json_name="voted_at,omitempty"];
-}
-
-message VoteFilter {
-  Vote vote = 1;
-  bool isTarget = 2;
-  bool isSender = 3;
-}
-
-service VoteRepo {
-  rpc FindVoteInStorage(VoteFilter) returns (Vote) {}
-  rpc InsertVoteToStorage(Vote) returns (InsertResult) {}
-  rpc DeleteVoteFromStorage(VoteFilter) returns (Empty) {}
+service VoteController {
+  rpc Vote(VoteArg) returns (Empty) {}
+  rpc RetractVote(RetractArg) returns (Empty) {}
   rpc GetRating(Target) returns (Rating) {}
 }

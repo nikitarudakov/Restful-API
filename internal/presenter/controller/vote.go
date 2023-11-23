@@ -7,7 +7,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/business/model"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/auth"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/datastore/cache"
-	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/registry"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"github.com/labstack/echo/v4"
@@ -21,8 +20,8 @@ type VoteController struct {
 	cacheDB     *cache.Database
 }
 
-func NewVoteController(r *registry.Registry) *VoteController {
-	return &VoteController{r.VoteUseCase, r.CacheDB}
+func NewVoteController(voteUsecase VoteManager, cacheDB *cache.Database) *VoteController {
+	return &VoteController{voteUsecase, cacheDB}
 }
 
 type VoteManager interface {
@@ -32,7 +31,7 @@ type VoteManager interface {
 }
 
 func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cfg *config.Config) {
-	roles := []string{"admin", "moderator", "user"}
+	roles := []string{"vote", "moderator", "user"}
 
 	ratings := e.Group("/ratings")
 
