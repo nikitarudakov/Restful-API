@@ -65,7 +65,7 @@ func Middleware(db *Database, dest interface{}, cacheCfg *config.Cache) echo.Mid
 
 			value := ctx.Get(cacheKey)
 			if err = db.SetCache(cacheKey, value, expiration); err != nil {
-				log.Warn().Str("service", "rating caching").Err(err).Send()
+				log.Warn().Str("service", "caching").Err(err).Send()
 			}
 
 			return nil
