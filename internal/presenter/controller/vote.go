@@ -10,7 +10,6 @@ import (
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository"
 	"git.foxminded.ua/foxstudent106092/user-management/internal/infrastructure/repository/repoerr"
 	"github.com/labstack/echo/v4"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,10 +17,11 @@ import (
 
 type VoteController struct {
 	voteUsecase VoteManager
+	cacheDB     *cache.Database
 }
 
-func NewVoteController(vc VoteManager) *VoteController {
-	return &VoteController{vc}
+func NewVoteController(voteUsecase VoteManager, cacheDB *cache.Database) *VoteController {
+	return &VoteController{voteUsecase, cacheDB}
 }
 
 type VoteManager interface {
@@ -30,13 +30,13 @@ type VoteManager interface {
 	GetRating(target string) (*model.Rating, error)
 }
 
-func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cacheDB *cache.Database, cfg *config.Config) {
-	roles := []string{"admin", "moderator", "user"}
+func (vc *VoteController) InitVoteRoutes(e *echo.Echo, cfg *config.Config) {
+	roles := []string{"vote", "moderator", "user"}
 
 	ratings := e.Group("/ratings")
 
 	var rating model.Rating
-	ratings.Use(cache.Middleware(cacheDB, &rating, &cfg.Cache))
+	ratings.Use(cache.Middleware(vc.cacheDB, &rating, &cfg.Cache))
 
 	auth.InitAuthMiddleware(ratings, &cfg.Auth, roles)
 
@@ -86,8 +86,6 @@ func (vc *VoteController) GetRating(ctx echo.Context) error {
 
 	rating, err := vc.voteUsecase.GetRating(target)
 	if err != nil {
-		log.Info().Msg("here")
-
 		var calcRatingUserError *repoerr.CalcRatingUserError
 		if errors.As(err, &calcRatingUserError) {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -121,7 +119,7 @@ func (vc *VoteController) parseUserVote(ctx echo.Context) (*model.Vote, error) {
 	voteObj := model.Vote{
 		Sender:  sender,
 		Target:  target,
-		Vote:    vote,
+		Vote:    int32(vote),
 		VotedAt: now,
 	}
 

@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "/user";
+
+message Empty {}
+
+message Username {
+  string username = 1;
+}
+
+message Page {
+  int64 page = 1;
+}
+
+message Profile {
+  string nickname = 1 [json_name="nickname"];
+  string firstName = 2 [json_name="first_name"];
+  string lastName = 3 [json_name="last_name"];
+  optional int64 createdAt = 4 [json_name="created_at"];
+  optional int64 updatedAt = 5 [json_name="updated_at"];
+  optional int64 deletedAt = 6 [json_name="deleted_at"];
+}
+
+message Profiles {
+  repeated Profile profiles = 1;
+}
+
+message Update {
+  string nickname = 1 [json_name="nickname"];
+  string firstName = 2 [json_name="first_name"];
+  string lastName = 3 [json_name="last_name"];
+  optional int64 updatedAt = 4 [json_name="updated_at"];
+}
+
+message UpdateArg {
+  Update update = 1;
+  Username username = 2;
+}
+
+service UserController {
+  rpc DeleteUserAndProfile(Username) returns (Empty) {}
+  rpc ListProfiles(Page) returns (Profiles) {}
+  rpc UpdateUserAndProfile(UpdateArg) returns (Empty) {}
+}

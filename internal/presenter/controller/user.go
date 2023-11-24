@@ -15,6 +15,7 @@ import (
 type UserController struct {
 	userUseCase    UserManager
 	profileUseCase ProfileManager
+	cacheDb        *cache.Database
 }
 
 // UserManager contains methods for performing operations on User/Profile datatype
@@ -31,18 +32,20 @@ type ProfileManager interface {
 	CreateProfile(p *model.Profile) (*repository.InsertResult, error)
 	UpdateProfile(p *model.Update, profileName string) error
 	DeleteProfile(profileName string) error
-	ListProfiles(page int64) ([]model.Profile, error)
+	ListProfiles(page int64) ([]*model.Profile, error)
 }
 
 // NewUserController implicitly links  *UserController to userController
 // Here to instantiate userController we provide usecase.UserManager
-func NewUserController(um UserManager, pm ProfileManager) *UserController {
-	return &UserController{um, pm}
+func NewUserController(userUseCase UserManager,
+	profileUseCase ProfileManager,
+	cacheDB *cache.Database) *UserController {
+	return &UserController{userUseCase, profileUseCase, cacheDB}
 }
 
-func (uc *UserController) InitUserRoutes(e *echo.Echo, cacheDB *cache.Database, cfg *config.Config) {
+func (uc *UserController) InitUserRoutes(e *echo.Echo, cfg *config.Config) {
 	userRouter := e.Group("/users")
-	userRoles := []string{"admin", "user", "moderator"}
+	userRoles := []string{"vote", "user", "moderator"}
 
 	auth.InitAuthMiddleware(userRouter, &cfg.Auth, userRoles)
 
@@ -50,13 +53,13 @@ func (uc *UserController) InitUserRoutes(e *echo.Echo, cacheDB *cache.Database, 
 		return uc.UpdateUserAndProfile(ctx)
 	})
 
-	adminRouter := userRouter.Group("/admin")
-	adminRoles := []string{"admin", "moderator"}
+	adminRouter := userRouter.Group("/vote")
+	adminRoles := []string{"vote", "moderator"}
 
 	auth.InitAuthMiddleware(adminRouter, &cfg.Auth, adminRoles)
 
 	var profiles []model.Profile
-	adminRouter.Use(cache.Middleware(cacheDB, &profiles, &cfg.Cache))
+	adminRouter.Use(cache.Middleware(uc.cacheDb, &profiles, &cfg.Cache))
 
 	adminRouter.GET("/profiles/list", func(ctx echo.Context) error {
 		return uc.ListProfiles(ctx)

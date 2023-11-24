@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package vote;
+
+option go_package = "/vote";
+
+message Empty {}
+
+message VoteArg {
+  string sender = 1;
+  string target = 2;
+  int32 vote = 3;
+  int64 votedAt = 4 [json_name="voted_at,omitempty"];
+}
+
+message RetractArg {
+  string target = 1;
+  string sender = 2;
+}
+
+message Target {
+  string target = 1;
+}
+
+message Rating {
+  string target = 1;
+  int32 rating = 2;
+}
+
+service VoteController {
+  rpc Vote(VoteArg) returns (Empty) {}
+  rpc RetractVote(RetractArg) returns (Empty) {}
+  rpc GetRating(Target) returns (Rating) {}
+}

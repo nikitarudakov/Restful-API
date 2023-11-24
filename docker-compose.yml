@@ -1,9 +1,21 @@
 version: '3.8'
 services:
+  grpcservice:
+    container_name: "grpcservice"
+    networks:
+      - user_network
+    build:
+      context: .
+      dockerfile: ./grpc.Dockerfile
+    ports:
+      - "9000:9000"
+
   cache:
     image: redis:7.2.3
     restart: always
     hostname: redis
+    networks:
+      - user_network
     ports:
       - '6379:6379'
     command: "redis-server"
@@ -11,13 +23,29 @@ services:
       - cache:/data
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: ./app.Dockerfile
+    networks:
+      - user_network
+    depends_on:
+      - grpcservice
     ports:
       - "8080:8080"
 
   db:
     image: "mongo"
+    networks:
+      - user_network
+    volumes:
+      - db:/data
+
+networks:
+  user_network:
+    name: "user_management"
 
 volumes:
   cache:
+    driver: local
+  db:
     driver: local

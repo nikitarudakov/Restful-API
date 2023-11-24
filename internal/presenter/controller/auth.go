@@ -27,10 +27,11 @@ type AuthResult struct {
 
 func NewAuthController(userUseCase UserManager,
 	profileUseCase ProfileManager, cfg *config.Config) *AuthController {
-	return &AuthController{userUseCase: userUseCase, profileUseCase: profileUseCase, cfg: cfg}
+	return &AuthController{userUseCase: userUseCase,
+		profileUseCase: profileUseCase, cfg: cfg}
 }
 
-func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {
+func (ac *AuthController) InitAuthRoutes(e *echo.Echo, cfg *config.Config) {
 	regRouter := e.Group("/auth")
 
 	regRouter.POST("/register", func(ctx echo.Context) error {
@@ -41,7 +42,11 @@ func (ac *AuthController) InitAuthRoutes(e *echo.Echo) {
 		return ac.Login(ctx)
 	})
 
-	regRouter.PUT("/password/update", func(ctx echo.Context) error {
+	restrictedAuthRouter := regRouter.Group("/users")
+	userRoles := []string{"user", "vote", "moderator"}
+	auth.InitAuthMiddleware(restrictedAuthRouter, &cfg.Auth, userRoles)
+
+	restrictedAuthRouter.PUT("/password/update", func(ctx echo.Context) error {
 		return ac.UpdatePassword(ctx)
 	})
 }
@@ -131,7 +136,7 @@ func (ac *AuthController) registerUser(ctx echo.Context, u model.User) (*reposit
 		return nil, err
 	}
 
-	if u.Role == "admin" {
+	if u.Role == "vote" {
 		if subtle.ConstantTimeCompare([]byte(u.Username), []byte(ac.cfg.Admin.Username)) != 1 ||
 			subtle.ConstantTimeCompare([]byte(u.Password), []byte(ac.cfg.Admin.Password)) != 1 {
 

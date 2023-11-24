@@ -22,9 +22,9 @@ func GetVoteUsecase() *VoteUsecase {
 		panic(err)
 	}
 
-	r := registry.NewRegistry(db, &cfg.Database)
+	r := registry.NewRegistry(db, cfg)
 
-	return NewVoteUsecase(r.Pr, r.Vr)
+	return NewVoteUsecase(r.ProfileRepo, r.VoteRepo)
 }
 
 func TestUserUsecase_RetractVote(t *testing.T) {

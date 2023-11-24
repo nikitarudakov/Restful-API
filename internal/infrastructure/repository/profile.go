@@ -24,7 +24,7 @@ type ProfileRepoController interface {
 	InsertProfileToStorage(profile *model.Profile) (*InsertResult, error)
 	DeleteProfileFromStorage(profileName string) error
 	UpdateProfileInStorage(profile *model.Update, profileName string) error
-	ListProfilesFromStorage(page int64) ([]model.Profile, error)
+	ListProfilesFromStorage(page int64) ([]*model.Profile, error)
 }
 
 // NewProfileRepository implicitly links repository.ProfileRepository to profileRepository
@@ -109,8 +109,8 @@ func (pr *ProfileRepository) UpdateProfileInStorage(modelUpdate *model.Update, p
 // ListProfilesFromStorage find all user profiles and sets pagination based on
 // provided page of type int64. Pagination is implemented with
 // methods options.Find().SetLimit() and options.Find().SetSkip()
-func (pr *ProfileRepository) ListProfilesFromStorage(page int64) ([]model.Profile, error) {
-	var profiles []model.Profile
+func (pr *ProfileRepository) ListProfilesFromStorage(page int64) ([]*model.Profile, error) {
+	var profiles []*model.Profile
 
 	keyValue := bson.M{} // no specific key value
 

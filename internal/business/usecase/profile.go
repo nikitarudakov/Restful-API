@@ -28,7 +28,7 @@ func (pu *ProfileUseCase) DeleteProfile(profileName string) error {
 	return pu.profileRepo.DeleteProfileFromStorage(profileName)
 }
 
-func (pu *ProfileUseCase) ListProfiles(page int64) ([]model.Profile, error) {
+func (pu *ProfileUseCase) ListProfiles(page int64) ([]*model.Profile, error) {
 	profiles, err := pu.profileRepo.ListProfilesFromStorage(page)
 	return profiles, err
 }
